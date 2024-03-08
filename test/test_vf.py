@@ -37,11 +37,10 @@ class ODE_Lorenz(nn.Module):
         res = self.net(y)
         return res
 
-def plot_vector_field(model, path, t=0., N=50, device='cuda'):
+def plot_vector_field(model, path, idx, t=0., N=50, device='cuda'):
     # Credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
 
     "Plots vector field and trajectories on it."
-    idx = 2
     
     # x = torch.arange(traj[:,:,0].min(), traj[:,:,0].max(), N)
     # y = torch.arange(traj[:,:,idx].min(), traj[:,:,idx].max(), N)
@@ -105,5 +104,5 @@ if __name__ == '__main__':
 
     # 2. plot
     JAC_plot_path = '../plot/Vector_field/'+str(dyn_sys)+'_JAC.jpg'
-    plot_vector_field(JAC, path=JAC_plot_path, t=0., N=100, device='cuda')
+    plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
 
