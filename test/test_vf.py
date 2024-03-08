@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 
 def lorenz(t, u, rho=28.0):
     """ Lorenz chaotic differential equation: du/dt = f(t, u)
@@ -37,7 +38,34 @@ class ODE_Lorenz(nn.Module):
         res = self.net(y)
         return res
 
-def plot_vector_field(model, path, idx, t=0., N=50, device='cuda'):
+
+def plot_3d_vector_field(model, path, t, N, device='cuda'):
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d') 
+
+    x, y, z = np.meshgrid(np.linspace(-20, 20, N),
+                        np.linspace(-20, 20, N),
+                        np.linspace(-20, 20, N))
+
+    U, V, W = torch.zeros(N,N,N), torch.zeros(N,N,N), torch.zeros(N,N,N)
+
+    for i in range(N):
+        for j in range(N):
+            for k in range(N):
+                phi = torch.stack([torch.tensor(x[i,j,k]), torch.tensor(y[i,j,k]), torch.tensor(z[i,j,k])]).to('cuda').double()
+                O = model(0., phi)
+                U[i,j,k], V[i,j,k], W[i,j,k] = O[0], O[1], O[2]
+
+                if (i % 10 == 0) and (j % 10 == 0):
+                    print(i, O)
+
+    ax.quiver(x, y, z, U.detach().numpy(), V.detach().numpy(), W.detach().numpy(), normalize=True, arrow_length_ratio=0.4, linewidths=0.7)
+    plt.savefig(path, format='jpg', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
+    return
+
+
+def plot_vector_field(model, path, idx, t, N, device='cuda'):
     # Credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
 
     "Plots vector field and trajectories on it."
@@ -59,7 +87,7 @@ def plot_vector_field(model, path, idx, t=0., N=50, device='cuda'):
     for i in range(N):
         for j in range(N):
             if idx == 1:
-                phi = torch.stack([torch.tensor(X[i,j]), torch.tensor(Y[i,j]), torch.tensor(13.5)]).to('cuda').double()
+                phi = torch.stack([torch.tensor(X[i,j]), torch.tensor(Y[i,j]), torch.tensor(0.)]).to('cuda').double()
             else:
                 phi = torch.stack([X[i,j].clone().detach(), torch.tensor(0), Y[i,j].clone().detach()]).to('cuda').double()
             O = model(0., phi)
@@ -104,5 +132,6 @@ if __name__ == '__main__':
 
     # 2. plot
     JAC_plot_path = '../plot/Vector_field/'+str(dyn_sys)+'_JAC.jpg'
-    plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+    # plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+    plot_3d_vector_field(JAC, '../plot/Vector_field/'+str(dyn_sys)+'_3d_JAC.jpg', 0, 10, device='cuda')
 
