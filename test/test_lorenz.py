@@ -195,59 +195,6 @@ def plot_vf(model, dyn_info):
     stop 
 
 
-
-def plot_vector_field(model, dyn_sys, idx, traj, path, t=0., N=50, device='cuda'):
-    # credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
-
-    if dyn_sys == "lorenz": 
-        if idx == 1:
-            x = torch.linspace(-100, 100, N)
-            y = torch.linspace(-100, 100, N)
-        else:
-            x = torch.linspace(-20, 20, N)
-            y = torch.linspace(0, 40, N)
-        
-    X, Y = torch.meshgrid(x,y)
-    U, V = torch.zeros(N,N), torch.zeros(N,N)
-    print("shape", X.shape, Y.shape)
-
-    for i in range(N):
-        for j in range(N):
-            if idx == 1:
-                phi = torch.stack([torch.tensor(X[i,j]), torch.tensor(Y[i,j]), torch.tensor(13.5)]).to('cuda').double()
-            else:
-                phi = torch.stack([X[i,j].clone().detach(), torch.tensor(0), Y[i,j].clone().detach()]).to('cuda').double()
-
-            O = model(0., phi)
-            U[i,j], V[i,j] = O[0], O[idx]
-
-    print(X.requires_grad, Y.requires_grad, U.requires_grad, V.requires_grad)
-
-    fig = figure(figsize=(5,4))
-    ax = fig.add_subplot(111)
-    if U.requires_grad:
-        contourf = ax.contourf(X, Y, torch.sqrt(U**2 + V**2).detach().numpy(), cmap='jet') #'RdYlBu'
-        ax.streamplot(X.T.numpy(),Y.T.numpy(),U.T.detach().numpy(),V.T.detach().numpy(), color='k')
-    else:
-        contourf = ax.contourf(X, Y, torch.sqrt(U**2 + V**2), cmap='jet') #'RdYlBu'
-        ax.streamplot(X.T.numpy(),Y.T.numpy(),U.T.numpy(),V.T.numpy(), color='k')
-
-    ax.set_xlim([x.min(),x.max()])
-    ax.set_ylim([y.min(),y.max()])
-    ax.set_xlabel(r"$x$", fontsize=17)
-    if idx == 1:
-        ax.set_ylabel(r"$y$", fontsize=17)
-    else:
-        ax.set_ylabel(r"$z$", fontsize=17)
-    ax.xaxis.set_tick_params(labelsize=17)
-    ax.yaxis.set_tick_params(labelsize=17)
-    fig.colorbar(contourf)
-    tight_layout()
-    savefig(path, format='jpg', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
-
-    return
-
-
 if __name__ == '__main__':
 
     # Set device
@@ -294,14 +241,3 @@ if __name__ == '__main__':
     plot_loss(epochs, loss_hist, test_loss_hist) 
     plot_vf(m, dyn_sys_info)
 
-
-    '''
-    # Save Trained Model
-    model_path = "../test_result/expt_"+str(args.dyn_sys)+"/"+args.optim_name+"/"+str(args.time_step)+'/'+'model.pt'
-    torch.save(m.state_dict(), model_path)
-    print("Saved new model!")
-
-    # Save Vector Field Plot
-    JAC_plot_path = '../plot/Vector_field/'+str(dyn_sys)+'_JAC.jpg'
-    plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-    '''
