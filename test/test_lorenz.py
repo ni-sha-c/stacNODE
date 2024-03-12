@@ -9,17 +9,17 @@ import argparse
 import json
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
-rcParams.update({
-    "text.usetex": True,
-    "font.family": "sans-serif",
-    "font.sans-serif": "Helvetica",
-})
+# rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "sans-serif",
+#     "font.sans-serif": "Helvetica",
+# })
 
 ########################
 ### Dynamical System ###
 ########################
 
-def lorenz(t, u, params=[10.0,1.0,8/3]):
+def lorenz(t, u, params=[10.0,28.0,8/3]):
     """ Lorenz chaotic differential equation: du/dt = f(t, u)
     t: time T to evaluate system
     u: state vector [x, y, z] 
@@ -76,7 +76,6 @@ def create_data(dyn_info, n_train, n_test, n_trans):
     return [X, Y, X_test, Y_test]
 
 def reg_jacobian_loss(time_step, True_J, cur_model_J, output_loss, reg_param):
-    #reg_param: 1e-5 #5e-4 was working well #0.11
 
     diff_jac = True_J - cur_model_J
     norm_diff_jac = torch.norm(diff_jac)
@@ -101,7 +100,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     if loss_type == "Jacobian":
         True_J = torch.ones(num_train, dim, dim).to(device)
         for i in range(num_train):
-            True_J[i] = Jacobian_Matrix(X[i, :], sigma=10.0, r=rho, b=8/3)
+            True_J[i] = Jacobian_Matrix(X[i, :], sigma=10.0, r=28.0, b=8/3)
         print("Finished Computing True Jacobian")
 
     # Training Loop
@@ -148,24 +147,24 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
 
 def plot_loss(epochs, train, test):
     fig, ax = subplots()
-    ax.plot(epochs[15:], train[15:], "P-", lw=2.0, ms=5.0, label="Train")
-    ax.plot(epochs[15:], test[15:], "P-", lw=2.0, ms=5.0, label="Test")
+    ax.plot(epochs[25:].numpy(), train[25:].detach().cpu().numpy(), "P-", lw=2.0, ms=5.0, label="Train")
+    ax.plot(epochs[25:].numpy(), test[25:].detach().cpu().numpy(), "P-", lw=2.0, ms=5.0, label="Test")
     ax.set_xlabel("Epochs",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
-    savefig('/home/nisha/code/stacNODE/plot/loss/train.png', bbox_inches ='tight', pad_inches = 0.1)
-    fig, ax = subplots()
-    ax.plot(epochs[30:], test[30:], "o-", color="k", lw=2.0, ms=5.0, label="Test")
-    ax.set_xlabel("Epochs",fontsize=24)
-    ax.xaxis.set_tick_params(labelsize=24)
-    ax.yaxis.set_tick_params(labelsize=24)
-    ax.legend(fontsize=24)
-    ax.grid(True)
-    tight_layout()
-    savefig('/home/nisha/code/stacNODE/plot/loss/test.png', bbox_inches ='tight', pad_inches = 0.1)
+    savefig('../plot/loss.png', bbox_inches ='tight', pad_inches = 0.1)
+    # fig, ax = subplots()
+    # ax.plot(epochs[30:], test[30:], "o-", color="k", lw=2.0, ms=5.0, label="Test")
+    # ax.set_xlabel("Epochs",fontsize=24)
+    # ax.xaxis.set_tick_params(labelsize=24)
+    # ax.yaxis.set_tick_params(labelsize=24)
+    # ax.legend(fontsize=24)
+    # ax.grid(True)
+    # tight_layout()
+    # savefig('/home/nisha/code/stacNODE/plot/loss/test.png', bbox_inches ='tight', pad_inches = 0.1)
     
 
 def plot_vf(model, dyn_info):
@@ -191,8 +190,7 @@ def plot_vf(model, dyn_info):
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
-    savefig('/home/nisha/code/stacNODE/plot/vec/errx.png')
-    stop 
+    savefig('../plot/errx.png')
 
 
 if __name__ == '__main__':
@@ -212,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_test", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=1000)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE", "Auto_corr"])
-    parser.add_argument("--reg_param", type=float, default=1e-1)
+    parser.add_argument("--reg_param", type=float, default=1e-3)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
 
 
