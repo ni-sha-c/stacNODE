@@ -9,27 +9,34 @@ import argparse
 import json
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
-
+rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": "Helvetica",
+})
 
 ########################
 ### Dynamical System ###
 ########################
 
-def lorenz(t, u, rho=28.0):
+def lorenz(t, u, params=[10.0,1.0,8/3]):
     """ Lorenz chaotic differential equation: du/dt = f(t, u)
     t: time T to evaluate system
     u: state vector [x, y, z] 
     return: new state vector in shape of [3]"""
 
-    sigma = 10.0
-    beta = 8/3
-
     du = torch.stack([
-            sigma * (u[1] - u[0]),
-            u[0] * (rho - u[2]) - u[1],
-            (u[0] * u[1]) - (beta * u[2])
+            params[0] * (u[1] - u[0]),
+            u[0] * (params[1] - u[2]) - u[1],
+            (u[0] * u[1]) - (params[2] * u[2])
         ])
     return du
+
+def Jacobian_Matrix(input, sigma, r, b):
+    ''' Jacobian Matrix of Lorenz '''
+
+    x, y, z = input
+    return torch.stack([torch.tensor([-sigma, sigma, 0]), torch.tensor([r - z, -1, -x]), torch.tensor([y, x, -b])])
 
 
 class ODE_Lorenz(nn.Module):
@@ -49,45 +56,23 @@ class ODE_Lorenz(nn.Module):
         res = self.net(y)
         return res
 
-# Time Integrator
-def solve_odefunc(odefunc, t, y0):
-
-    solution = torchdiffeq.odeint(odefunc, y0, t, rtol=1e-9, atol=1e-9, method="rk4")
-    final_state = solution[-1]
-    return final_state
-
 ##############
 ## Training ##
 ##############
 
-def create_data(traj, n_train, n_test, n_nodes, n_trans):
-
+def create_data(dyn_info, n_train, n_test, n_trans):
+    dyn, dim, time_step = dyn_info
+    tot_time = time_step*(n_train+n_test+n_trans+1) 
+    t_eval_point = torch.arange(0,tot_time,time_step)
+    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='rk4', rtol=1e-8) 
+    traj = traj[n_trans:]
     ##### create training dataset #####
-    X = np.zeros((n_train, n_nodes))
-    Y = np.zeros((n_train, n_nodes))
-
-    if torch.is_tensor(traj):
-        traj = traj.detach().cpu().numpy()
-    for i in torch.arange(0, n_train, 1):
-        i = int(i)
-        X[i] = traj[n_trans+i]
-        Y[i] = traj[n_trans+1+i]
-
-    X = torch.tensor(X).reshape(n_train,n_nodes)
-    Y = torch.tensor(Y).reshape(n_train,n_nodes)
-
+    X = traj[:n_train]
+    Y = traj[1:n_train+1]
     ##### create test dataset #####
-    X_test = np.zeros((n_test, n_nodes))
-    Y_test = np.zeros((n_test, n_nodes))
-
-    for i in torch.arange(0, n_test, 1):
-        i = int(i)
-        X_test[i] = traj[n_trans+n_train+i]
-        Y_test[i] = traj[n_trans+1+n_train+i]
-
-    X_test = torch.tensor(X_test).reshape(n_test, n_nodes)
-    Y_test = torch.tensor(Y_test).reshape(n_test, n_nodes)
-
+    traj = traj[n_train:]
+    X_test = traj[:n_test]
+    Y_test = traj[1:]
     return [X, Y, X_test, Y_test]
 
 def reg_jacobian_loss(time_step, True_J, cur_model_J, output_loss, reg_param):
@@ -100,37 +85,30 @@ def reg_jacobian_loss(time_step, True_J, cur_model_J, output_loss, reg_param):
 
     return total_loss
 
-def Jacobian_Matrix(input, sigma, r, b):
-    ''' Jacobian Matrix of Lorenz '''
-
-    x, y, z = input
-    return torch.stack([torch.tensor([-sigma, sigma, 0]), torch.tensor([r - z, -1, -x]), torch.tensor([y, x, -b])])
-
-def train(dyn_sys_info, model, device, dataset, true_t, optim_name, criterion, epochs, lr, weight_decay, time_step, real_time, tran_state, rho, reg_param, loss_type, new_loss=True, multi_step = False,minibatch=False, batch_size=0):
+def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type):
 
     # Initialize
-    pred_train, true_train, loss_hist, test_loss_hist = ([] for i in range(4))
+    n_store, k  = 100, 0
+    ep_num, loss_hist, test_loss_hist = torch.empty(n_store,dtype=int), torch.empty(n_store), torch.empty(n_store)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     X, Y, X_test, Y_test = dataset
     X, Y, X_test, Y_test = X.to(device), Y.to(device), X_test.to(device), Y_test.to(device)
     num_train = X.shape[0]
-    dyn_sys, dyn_sys_name, dim = dyn_sys_info
-    t_eval_point = torch.linspace(0, time_step, 2).to(device).double()
+    dyn_sys, dim, time_step = dyn_sys_info
+    t_eval_point = torch.linspace(0, time_step, 2).to(device)
     
     # Compute True Jacobian
     if loss_type == "Jacobian":
         True_J = torch.ones(num_train, dim, dim).to(device)
-        if dyn_sys_name == "lorenz":
-            for i in range(num_train):
-                True_J[i] = Jacobian_Matrix(X[i, :], sigma=10.0, r=rho, b=8/3)
+        for i in range(num_train):
+            True_J[i] = Jacobian_Matrix(X[i, :], sigma=10.0, r=rho, b=8/3)
         print("Finished Computing True Jacobian")
 
     # Training Loop
     for i in range(epochs):
         model.train()
-        model.double()
-
-        y_pred = solve_odefunc(model, t_eval_point, X).to(device)
+        y_pred = torchdiffeq.odeint(model, X, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
+        y_pred = y_pred.to(device)
         optimizer.zero_grad()
         MSE_loss = criterion(y_pred, Y)  * (1/time_step)
 
@@ -143,52 +121,80 @@ def train(dyn_sys_info, model, device, dataset, true_t, optim_name, criterion, e
             train_loss = reg_jacobian_loss(time_step, True_J, cur_model_J, MSE_loss, reg_param)
         else:
             # Compute MSE Loss
-            train_loss = MSE_loss.item()
-
-        # Plot Vector Field
-        if (i % 10 == 0) and (i < 500):
-            idx=1
-            JAC_path = '../plot/Vector_field/train/'+str(dyn_sys_name)+'_JAC'+'_i='+str(i)+'_'+str(idx)+'.jpg'
-            plot_vector_field(model, dyn_sys_name, idx=idx, traj=None, path=JAC_path, t=0., N=50, device='cuda')
-            # print(i, cur_model_J)
-
+            train_loss = MSE_loss
         train_loss.backward()
         optimizer.step()
 
-        # Save Training History
-        loss_hist.append(train_loss)
-        if i % 1000 == 0:
-            print(i, MSE_loss.item(), train_loss.item())
+        # Save Training and Test History
+        if i % (epochs//n_store) == 0:
+            with torch.no_grad():
+                model.eval()
+                y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
+                y_pred_test = y_pred_test.to(device)
+                # save predicted node feature for analysis              
+                test_loss = criterion(y_pred_test, Y_test) * (1/time_step)
+                print("Epoch: ", i, " Train: {:.3f}".format(train_loss.item()), " Test: {:.3f}".format(test_loss.item()))
 
-        ##### test one_step #####
-        pred_test, test_loss = evaluate(dyn_sys_name, model, time_step, X_test, Y_test, device, criterion, i, optim_name)
-        test_loss_hist.append(test_loss)
+                ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
+                k = k + 1
 
-    return loss_hist, test_loss_hist
+    return ep_num, loss_hist, test_loss_hist
 
-
-def evaluate(dyn_sys, model, time_step, X_test, Y_test, device, criterion, iter, optimizer_name):
-
-  with torch.no_grad():
-    model.eval()
-
-    t_eval_point = torch.linspace(0, time_step, 2).to(device).double()
-    y_pred_test = solve_odefunc(model, t_eval_point, X_test).to(device)
-
-    # save predicted node feature for analysis
-    pred_test = y_pred_test.detach().cpu()
-    Y_test = Y_test.detach().cpu()
-
-    test_loss = criterion(pred_test, Y_test).item()
-    if iter % 1000 == 0:
-        print("test loss:", test_loss)
-
-  return pred_test, test_loss
 
 
 ##############
 #### Plot ####
 ##############
+
+def plot_loss(epochs, train, test):
+    fig, ax = subplots()
+    ax.plot(epochs[15:], train[15:], "P-", lw=2.0, ms=5.0, label="Train")
+    ax.plot(epochs[15:], test[15:], "P-", lw=2.0, ms=5.0, label="Test")
+    ax.set_xlabel("Epochs",fontsize=24)
+    ax.xaxis.set_tick_params(labelsize=24)
+    ax.yaxis.set_tick_params(labelsize=24)
+    ax.legend(fontsize=24)
+    ax.grid(True)
+    tight_layout()
+    savefig('/home/nisha/code/stacNODE/plot/loss/train.png', bbox_inches ='tight', pad_inches = 0.1)
+    fig, ax = subplots()
+    ax.plot(epochs[30:], test[30:], "o-", color="k", lw=2.0, ms=5.0, label="Test")
+    ax.set_xlabel("Epochs",fontsize=24)
+    ax.xaxis.set_tick_params(labelsize=24)
+    ax.yaxis.set_tick_params(labelsize=24)
+    ax.legend(fontsize=24)
+    ax.grid(True)
+    tight_layout()
+    savefig('/home/nisha/code/stacNODE/plot/loss/test.png', bbox_inches ='tight', pad_inches = 0.1)
+    
+
+def plot_vf(model, dyn_info):
+    dyn, dim, time_step = dyn_info
+    orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
+    orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 2, time_step), method='rk4', rtol=1e-8)
+    len_o = orbit.shape[0]
+    vf_nn = model(0, orbit.to('cuda')).detach().cpu()
+    vf = torch.zeros(len_o, dim)
+    for i in range(len_o):
+        vf[i] = dyn(0,orbit[i])
+    vf_nn, vf = vf_nn.T, vf.T
+    ax = figure().add_subplot()
+    vf_nn, vf = vf_nn.numpy(), vf.numpy()
+    mag = np.linalg.norm(vf, axis=0)
+    #err = np.linalg.norm(vf_nn - vf, axis=0)
+    err = abs(vf_nn[0]-vf[0])
+    t = time_step*np.arange(0, len_o)
+    ax.plot(t, err/mag*100, "o", label="err vec x-comp", ms=3.0)
+    ax.set_xlabel("time",fontsize=24)
+    ax.xaxis.set_tick_params(labelsize=24)
+    ax.yaxis.set_tick_params(labelsize=24)
+    ax.legend(fontsize=24)
+    ax.grid(True)
+    tight_layout()
+    savefig('/home/nisha/code/stacNODE/plot/vec/errx.png')
+    stop 
+
+
 
 def plot_vector_field(model, dyn_sys, idx, traj, path, t=0., N=50, device='cuda'):
     # credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
@@ -252,80 +258,50 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
-    parser.add_argument("--lr", type=float, default=5e-4)
-    parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=5000)
-    parser.add_argument("--integration_time", type=int, default=200)
-    parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=8000)
-    parser.add_argument("--num_trans", type=int, default=0)
-    parser.add_argument("--iters", type=int, default=5*(10**4))
-    parser.add_argument("--minibatch", type=bool, default=False)
-    parser.add_argument("--batch_size", type=int, default=500)
-    parser.add_argument("--new_loss", type=bool, default=True)
-    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE", "Auto_corr"])
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--weight_decay", type=float, default=1e-4)
+    parser.add_argument("--num_epoch", type=int, default=1500)
+    parser.add_argument("--num_train", type=int, default=5000)
+    parser.add_argument("--num_test", type=int, default=3000)
+    parser.add_argument("--num_trans", type=int, default=1000)
+    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE", "Auto_corr"])
     parser.add_argument("--reg_param", type=float, default=1e-1)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--dyn_sys", default="lorenz")
 
-    # Save args
+
+    
+    # Set args
     args = parser.parse_args()
-    timestamp = datetime.datetime.now()
-    path = '../test_result/expt_'+str(args.dyn_sys)+'/'+str(timestamp)+'.txt'
-    # Convert the argparse.Namespace object to a dictionary
-    args_dict = vars(args)
-    with open(path, 'w') as f:
-        json.dump(args_dict, f, indent=2)
-
-    # 1. initialize
+    # initialize
     dim = 3
-    x0 = torch.randn(dim)
-    x_multi_0 = torch.randn(dim)
-    dyn_sys_info = [lorenz, args.dyn_sys, dim]
+    dyn_sys_info = [lorenz, dim, args.time_step]
 
     # Initialize Model and Dataset Parameters
     criterion = torch.nn.MSELoss()
-    real_time = args.iters * args.time_step
 
     # Create Dataset
-    t_eval_point = torch.arange(0,args.integration_time+1,args.time_step)
-    whole_traj = torchdiffeq.odeint(lorenz, x0, t_eval_point, method='rk4', rtol=1e-8) 
-    training_traj = whole_traj[:args.integration_time*int(1/args.time_step), :]
-    print("Finished Simulating")
-    dataset = create_data(training_traj, n_train=args.num_train, n_test=args.num_test, n_nodes=dim, n_trans=args.num_trans)
+    dataset = create_data(dyn_sys_info, n_train=args.num_train, n_test=args.num_test, n_trans=args.num_trans)
 
     # Create model
-    m = ODE_Lorenz(y_dim=dim, n_hidden=dim).to(device).double()
+    m = ODE_Lorenz(y_dim=dim, n_hidden=dim).to(device)
 
+
+    print("Training...") 
     # Train the model, return node
-    loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, None, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.time_step, real_time, args.num_trans, 28.0, args.reg_param, args.loss_type, new_loss= args.new_loss, multi_step=False, minibatch=args.minibatch, batch_size=args.batch_size)
+    epochs, loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
 
-    # Maximum weights
-    print("Saving Results...")
-    max_weight = []
-    for param_tensor in m.state_dict():
-        if "weight" in param_tensor:
-            weights = m.state_dict()[param_tensor].squeeze()
-            max_weight.append(torch.max(weights).cpu().tolist())
+    # plot things
+    plot_loss(epochs, loss_hist, test_loss_hist) 
+    plot_vf(m, dyn_sys_info)
 
-    lh = loss_hist[-1].tolist()
-    tl = test_loss_hist[-1]
 
-    with open(path, 'a') as f:
-        entry = {'train loss': lh, 'test loss': tl}
-        json.dump(entry, f, indent=2)
-
+    '''
     # Save Trained Model
     model_path = "../test_result/expt_"+str(args.dyn_sys)+"/"+args.optim_name+"/"+str(args.time_step)+'/'+'model.pt'
     torch.save(m.state_dict(), model_path)
     print("Saved new model!")
 
-    # Save Training/Test Loss
-    loss_hist = torch.stack(loss_hist)
-    np.savetxt('../test_result/expt_'+str(args.dyn_sys)+'/'+ args.optim_name + '/' + str(args.time_step) + '/' +"training_loss.csv", np.asarray(loss_hist.detach().cpu()), delimiter=",")
-    np.savetxt('../test_result/expt_'+str(args.dyn_sys)+'/'+ args.optim_name + '/' + str(args.time_step) + '/' +"test_loss.csv", np.asarray(test_loss_hist), delimiter=",")
-
     # Save Vector Field Plot
     JAC_plot_path = '../plot/Vector_field/'+str(dyn_sys)+'_JAC.jpg'
     plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-
+    '''
