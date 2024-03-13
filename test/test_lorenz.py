@@ -31,14 +31,6 @@ def lorenz(t, u, params=[10.0,28.0,8/3]):
             (u[0] * u[1]) - (params[2] * u[2])
         ])
     return du
-
-def Jacobian_Matrix(input, sigma, r, b):
-    ''' Jacobian Matrix of Lorenz '''
-
-    x, y, z = input
-    return torch.stack([torch.tensor([-sigma, sigma, 0]), torch.tensor([r - z, -1, -x]), torch.tensor([y, x, -b])])
-
-
 class ODE_Lorenz(nn.Module):
     '''Define Neural Network that approximates differential equation system of Chaotic Lorenz'''
 
@@ -98,29 +90,27 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     
     # Compute True Jacobian
     if loss_type == "Jacobian":
-        True_J = torch.ones(num_train, dim, dim).to(device)
-        for i in range(num_train):
-            True_J[i] = Jacobian_Matrix(X[i, :], sigma=10.0, r=28.0, b=8/3)
-        print("Finished Computing True Jacobian")
+        f = lambda x: lorenz(0, x)
+        true_jac_fn = torch.vmap(torch.func.jacrev(f,0))
+        True_J = true_jac_fn(X)
+    
 
     # Training Loop
     for i in range(epochs):
         model.train()
-        y_pred = torchdiffeq.odeint(model, X, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
+        y_pred = torchdiffeq.odeint(model, X, t_eval_point, method="rk4")[-1]
         y_pred = y_pred.to(device)
         optimizer.zero_grad()
-        MSE_loss = criterion(y_pred, Y)  * (1/time_step)
+        train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
             # Compute Jacobian
             jacrev = torch.func.jacrev(model, argnums=1)
-            compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
-            cur_model_J = compute_batch_jac(t_eval_point, X).to(device)
-            # Compute Jacobian Matching Loss
-            train_loss = reg_jacobian_loss(time_step, True_J, cur_model_J, MSE_loss, reg_param)
-        else:
-            # Compute MSE Loss
-            train_loss = MSE_loss
+            compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0))
+            cur_model_J = compute_batch_jac(t_eval_point, X)
+            train_loss += reg_param*criterion(True_J, cur_model_J)
+
+
         train_loss.backward()
         optimizer.step()
 
@@ -132,7 +122,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 y_pred_test = y_pred_test.to(device)
                 # save predicted node feature for analysis              
                 test_loss = criterion(y_pred_test, Y_test) * (1/time_step)
-                print("Epoch: ", i, " Train: {:.3f}".format(train_loss.item()), " Test: {:.3f}".format(test_loss.item()))
+                print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
 
                 ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
                 k = k + 1
@@ -205,7 +195,7 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=1500)
+    parser.add_argument("--num_epoch", type=int, default=2000)
     parser.add_argument("--num_train", type=int, default=5000)
     parser.add_argument("--num_test", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=1000)
@@ -230,7 +220,6 @@ if __name__ == '__main__':
     # Create model
     m = ODE_Lorenz(y_dim=dim, n_hidden=dim).to(device)
 
-
     print("Training...") 
     # Train the model, return node
     epochs, loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
@@ -238,4 +227,3 @@ if __name__ == '__main__':
     # plot things
     plot_loss(epochs, loss_hist, test_loss_hist) 
     plot_vf(m, dyn_sys_info)
-
