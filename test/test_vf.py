@@ -132,6 +132,6 @@ if __name__ == '__main__':
 
     # 2. plot
     JAC_plot_path = '../plot/Vector_field/'+str(dyn_sys)+'_JAC.jpg'
-    # plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-    plot_3d_vector_field(JAC, '../plot/Vector_field/'+str(dyn_sys)+'_3d_JAC.jpg', 0, 10, device='cuda')
+    plot_vector_field(JAC, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+    # plot_3d_vector_field(JAC, '../plot/Vector_field/'+str(dyn_sys)+'_3d_JAC.jpg', 0, 10, device='cuda')
 
