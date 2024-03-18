@@ -32,16 +32,36 @@ def lorenz(t, u, params=[10.0,28.0,8/3]):
         ])
     return du
 
+def rossler(t, X):
+    '''Parameter values picked from: The study of Lorenz and Rössler strange attractors by means of quantum theory by Bogdanov et al.
+    https://arxiv.org/ftp/arxiv/papers/1412/1412.2242.pdf
+    LE:  0.07062, 0.000048, -5.3937
+    '''
+    x, y, z = X
+    a = 0.2
+    b = 0.2
+    c = 5.7
+    
+    dx = -(y + z)
+    dy = x + a * y
+    dz = b + z * (x - c)
+    return torch.stack([dx, dy, dz])
+
 class ODE_Lorenz(nn.Module):
     '''Define Neural Network that approximates differential equation system of Chaotic Lorenz'''
+    # Neural Propogator?
 
     def __init__(self, y_dim=3, n_hidden=32*9):
         super(ODE_Lorenz, self).__init__()
         self.net = nn.Sequential(
             nn.Linear(3, 512),
             nn.GELU(),
-            nn.Linear(512, 1024),
-            nn.GELU(),
+            # nn.Linear(512, 512),
+            # nn.GELU(),
+            # nn.Linear(512, 1024),
+            # nn.GELU(),
+            # nn.Linear(1024, 1024),
+            # nn.GELU(),
             nn.Linear(1024, 3)
         )
 
@@ -67,15 +87,6 @@ def create_data(dyn_info, n_train, n_test, n_trans):
     X_test = traj[:n_test]
     Y_test = traj[1:]
     return [X, Y, X_test, Y_test]
-
-def reg_jacobian_loss(time_step, True_J, cur_model_J, output_loss, reg_param):
-
-    diff_jac = True_J - cur_model_J
-    norm_diff_jac = torch.norm(diff_jac)
-
-    total_loss = reg_param * norm_diff_jac**2 + output_loss
-
-    return total_loss
 
 def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type):
 
@@ -152,54 +163,39 @@ def plot_loss(epochs, train, test):
     savefig('../plot/loss.png', bbox_inches ='tight', pad_inches = 0.1)
 
 def plot_attractor(model, dyn_info, time):
-    # generate data
+    # generate true orbit and learned orbit
     dyn, dim, time_step = dyn_info
     tran_orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
-
     true_o = torchdiffeq.odeint(dyn, tran_orbit[-1], torch.arange(0, time, time_step), method='rk4', rtol=1e-8)
-
-    model.eval()
-    learned_o = torchdiffeq.odeint(model.to(device), tran_orbit[-1].to(device), torch.arange(0, time, time_step), method="rk4", rtol=1e-8).detach().cpu().numpy()
+    learned_o = torchdiffeq.odeint(model.eval().to(device), tran_orbit[-1].to(device), torch.arange(0, time, time_step), method="rk4", rtol=1e-8).detach().cpu().numpy()
 
     # create plot
     fig, axs = subplots(2, 3, figsize=(24,12))
     cmap = cm.plasma
-    idx = 0
+    num_row, num_col = axs.shape
 
-    for ax in axs.flatten():
-        if idx == 0 or idx == 3:
-            if idx == 0:
-                ax.plot(true_o[0, 0], true_o[0, 1], '+', markersize=35, color=cmap.colors[0])
-                ax.scatter(true_o[:, 0], true_o[:, 1], c=true_o[:, 2], s = 6, cmap='plasma', alpha=0.5)
+    for x in range(num_row):
+        for y in range(num_col):
+            orbit = true_o if x == 0 else learned_o
+            if y == 0:
+                axs[x,y].plot(orbit[0, 0], orbit[0, 1], '+', markersize=35, color=cmap.colors[0])
+                axs[x,y].scatter(orbit[:, 0], orbit[:, 1], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                axs[x,y].set_xlabel("X")
+                axs[x,y].set_ylabel("Y")
+            elif y == 1:
+                axs[x,y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color=cmap.colors[0])
+                axs[x,y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                axs[x,y].set_xlabel("X")
+                axs[x,y].set_ylabel("Z")
             else:
-                ax.plot(learned_o[0, 0], learned_o[0, 1], '+', markersize=35, color=cmap.colors[0])
-                ax.scatter(learned_o[:, 0], learned_o[:, 1], c=learned_o[:, 2], s = 6, cmap='plasma', alpha=0.5)
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-        elif idx == 1 or idx == 4:
-            if idx == 0:
-                ax.plot(true_o[0, 0], true_o[0, 2], '+', markersize=35, color=cmap.colors[0])
-                ax.scatter(true_o[:, 0], true_o[:, 2], c=true_o[:, 2], s = 6, cmap='plasma', alpha=0.5)
-            else:
-                ax.plot(learned_o[0, 0], learned_o[0, 2], '+', markersize=35, color=cmap.colors[0])
-                ax.scatter(learned_o[:, 0], learned_o[:, 2], c=learned_o[:, 2], s = 6, cmap='plasma', alpha=0.5)
-            ax.set_xlabel("X")
-            ax.set_ylabel("Z")
-        else:
-            if idx == 2:
-                ax.plot(true_o[0, 1], true_o[0, 2], '+', markersize=35, color=cmap.colors[0])
-                ax.scatter(true_o[:, 1], true_o[:, 2], c=true_o[:, 2], s = 6, cmap='plasma', alpha=0.5)
-            else:
-                ax.plot(learned_o[0, 1], learned_o[0, 2], '+', markersize=35, color=cmap.colors[0])
-                ax.scatter(learned_o[:, 1], learned_o[:, 2], c=learned_o[:, 2], s = 6, cmap='plasma', alpha=0.5)
-            ax.set_xlabel("Y")
-            ax.set_ylabel("Z")
-        idx += 1
-
-        ax.tick_params(labelsize=42)
-        ax.xaxis.label.set_size(42)
-        ax.yaxis.label.set_size(42)
-
+                axs[x,y].plot(orbit[0, 1], orbit[0, 2], '+', markersize=35, color=cmap.colors[0])
+                axs[x,y].scatter(orbit[:, 1], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                axs[x,y].set_xlabel("Y")
+                axs[x,y].set_ylabel("Z")
+        
+            axs[x,y].tick_params(labelsize=42)
+            axs[x,y].xaxis.label.set_size(42)
+            axs[x,y].yaxis.label.set_size(42)
     tight_layout()
     fig.savefig("../plot/Phase_plot/phase_plot.png", format='png', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
     return
@@ -234,15 +230,8 @@ def plot_vf(model, dyn_info):
 def plot_vector_field(model, path, idx, t, N, device='cuda'):
     # Credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
 
-    "Plots vector field and trajectories on it."
-
-    if idx == 1:
-        x = torch.linspace(-50, 50, N)
-        y = torch.linspace(-50, 50, N)
-    else:
-        x = torch.linspace(-20, 20, N)
-        y = torch.linspace(0, 40, N)
-        
+    x = torch.linspace(-50, 50, N)
+    y = torch.linspace(-50, 50, N)
     X, Y = torch.meshgrid(x,y)
     U, V = torch.zeros(N,N), torch.zeros(N,N)
     print("shape", X.shape, Y.shape)
@@ -282,6 +271,61 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
     return
 
 
+def lyap_exps(dyn_sys_info, true_traj, iters, method, model):
+    ''' Compute Lyapunov Exponents 
+        args: path = path to model '''
+
+    # Initialize parameter
+    dyn_sys_func, dim, time_step = dyn_sys_info
+    # QR Method where U = tangent vector, V = regular system
+    U = torch.eye(dim)
+    lyap_exp = [] #empty list to store the lengths of the orthogonal axes
+
+    real_time = iters * time_step
+    t_eval_point = torch.linspace(0, time_step, 2)
+
+    if method == "NODE":
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        t_eval_point = t_eval_point.to(device)
+        model.eval()
+
+        for i in range(iters):
+            if i % 1000 == 0:
+                print(i)
+
+            #update x0
+            x0 = true_traj[i].to(device)
+            cur_J = F.jacobian(lambda x: torchdiffeq.odeint(model, x, t_eval_point, method="rk4"), x0)[1]
+
+            J = torch.matmul(cur_J.to("cpu"), U.to("cpu"))
+
+            # QR Decomposition for J
+            Q, R = torch.linalg.qr(J)
+
+            lyap_exp.append(torch.log(abs(R.diagonal())))
+            U = Q #new axes after iteration
+
+        LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
+
+    else:
+        for i in range(iters):
+
+            #update x0
+            x0 = true_traj[i]
+            cur_J = F.jacobian(lambda x: torchdiffeq.odeint(dyn_sys_func, x, t_eval_point, method=method), x0)[1]
+         
+            J = torch.matmul(cur_J, U)
+
+            # QR Decomposition for J
+            Q, R = torch.linalg.qr(J)
+
+            lyap_exp.append(torch.log(abs(R.diagonal())))
+            U = Q #new axes after iteration
+
+        LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
+
+    return torch.tensor(LE)
+
 
 if __name__ == '__main__':
 
@@ -295,9 +339,9 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=3000)
-    parser.add_argument("--num_train", type=int, default=5000)
-    parser.add_argument("--num_test", type=int, default=3000)
+    parser.add_argument("--num_epoch", type=int, default=5000)
+    parser.add_argument("--num_train", type=int, default=10000)
+    parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE", "Auto_corr"])
     parser.add_argument("--reg_param", type=float, default=1e-2)
@@ -326,3 +370,9 @@ if __name__ == '__main__':
     JAC_plot_path = '../plot/Vector_field/JAC.jpg'
     plot_vector_field(m, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
     plot_attractor(m, dyn_sys_info, 20)
+
+    # compute LE
+    true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
+    learned_LE = lyap_exps(dyn_sys_info, true_traj, 30000, "NODE", m)
+    True_LE = lyap_exps(dyn_sys_info, true_traj, 30000, "rk4", m)
+    print("Learned:", learned_LE, "True:", True_LE)
