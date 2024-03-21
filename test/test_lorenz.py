@@ -9,16 +9,13 @@ import argparse
 import json
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
-# rcParams.update({
-#     "text.usetex": True,
-#     "font.family": "sans-serif",
-#     "font.sans-serif": "Helvetica",
-# })
+
 
 ########################
 ### Dynamical System ###
 ########################
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 def lorenz(t, u, params=[10.0,28.0,8/3]):
     """ Lorenz chaotic differential equation: du/dt = f(t, u)
     t: time T to evaluate system
@@ -156,7 +153,6 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     num_train = X.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
     t_eval_point = torch.linspace(0, time_step, 2).to(device)
-
     torch.cuda.empty_cache()
     
     # Compute True Jacobian
@@ -165,6 +161,8 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         f = lambda x: lorenz(0, x)
         true_jac_fn = torch.vmap(torch.func.jacrev(f))
         True_J = true_jac_fn(X)
+
+        Test_J = true_jac_fn(X_test)
 
     # Training Loop
     for i in range(epochs):
@@ -175,11 +173,13 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
-            # # Compute Jacobian
+            # Compute Jacobian
             jacrev = torch.func.jacrev(model, argnums=1)
             compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0))
             cur_model_J = compute_batch_jac(0, X).to(device)
             train_loss += reg_param*criterion(True_J, cur_model_J)
+
+            Jac_norm_diff = criterion(True_J, cur_model_J)
 
         train_loss.backward()
         optimizer.step()
@@ -197,9 +197,15 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 y_pred_test = y_pred_test.to(device)
                 # save predicted node feature for analysis            
                 test_loss = criterion(y_pred_test, Y_test) * (1/time_step/time_step)
-                print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
 
-                ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
+                test_model_J = compute_batch_jac(0, X_test).to(device)
+                test_jac_norm_diff = criterion(Test_J, test_model_J)
+
+                print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
+                # ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
+
+                ep_num[k], loss_hist[k], test_loss_hist[k] = i, Jac_norm_diff, test_jac_norm_diff
+                
                 k = k + 1
 
     if loss_type == "Jacobian":
@@ -214,7 +220,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
 #### Plot ####
 ##############
 
-def plot_loss(epochs, train, test):
+def plot_loss(epochs, train, test, loss_type, model_type):
     fig, ax = subplots()
     ax.plot(epochs[30:].numpy(), train[30:].detach().cpu().numpy(), "P-", lw=2.0, ms=5.0, label="Train")
     ax.plot(epochs[30:].numpy(), test[30:].detach().cpu().numpy(), "P-", lw=2.0, ms=5.0, label="Test")
@@ -224,7 +230,7 @@ def plot_loss(epochs, train, test):
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
-    savefig('../plot/loss.png', bbox_inches ='tight', pad_inches = 0.1)
+    savefig('../plot/'+str(loss_type)+'_'+str(model_type)+'_loss.png', bbox_inches ='tight', pad_inches = 0.1)
 
 def plot_attractor(model, dyn_info, time):
     # generate true orbit and learned orbit
@@ -297,12 +303,13 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
     x = torch.linspace(-50, 50, N)
     y = torch.linspace(-50, 50, N)
     X, Y = torch.meshgrid(x,y)
+    Z_random = torch.randn(1)*10
     U, V = np.zeros((N,N)), np.zeros((N,N))
 
     for i in range(N):
         for j in range(N):
             if idx == 1:
-                phi = torch.stack([torch.tensor(X[i,j]), torch.tensor(Y[i,j]), torch.tensor(20.)]).to('cuda')
+                phi = torch.stack([X[i,j], Y[i,j], torch.tensor(20.)]).to('cuda')
             else:
                 phi = torch.stack([X[i,j].clone().detach(), torch.tensor(0), Y[i,j].clone().detach()]).to('cuda')
             O = model(0., phi).detach().cpu().numpy()
@@ -396,10 +403,10 @@ if __name__ == '__main__':
         m = ODE_HigherDim_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
 
     print("Training...") # Train the model, return node
-    epochs, loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
+    epochs, loss_hist, test_loss_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
 
     # plot things
-    #plot_loss(epochs, loss_hist, test_loss_hist) 
+    plot_loss(epochs, loss_hist, test_loss_hist, args.loss_type, args.model_type) 
     #plot_vf(m, dyn_sys_info)
     #JAC_plot_path = '../plot/Vector_field/JAC.jpg'
     #True_plot_path = '../plot/Vector_field/True.jpg'
