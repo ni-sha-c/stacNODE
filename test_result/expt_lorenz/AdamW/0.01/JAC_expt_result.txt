@@ -1,0 +1,44 @@
+############## BASE ##############
+Jacobian | lr=fixed | epoch 5000 | train 5000 test 4000 | 3 layer of 512 | Train: 1.21527  Test: 0.25689 | Learned: tensor([ 0.7936,  0.0435, -8.4503]) True: tensor([ 8.6353e-01, -5.2465e-03, -1.4525e+01])
+
+############## BASE w/ longer training x 2 ##############
+Jacobian | lr=fixed | epoch 10000 | train 5000 test 4000 | 3 layer of 512 | Train: 1.99180  Test: 2.51068 | Learned: tensor([ 0.9685, -0.1414, -5.4033]) True: tensor([ 8.6353e-01, -5.2465e-03, -1.4525e+01])
+
+############## BASE w/ adaptive learning rate ##############
+Jacobian | decay = 0.1 | epoch 5000 | train 5000 test 4000 | 3 layer of 512 | Train: 1.31898  Test: 0.24859 | Learned: [0.8608240873602494, 0.024558131832213802, -8.13598758823089] True: [0.8635345038770068, -0.005246071760486757, -14.524857759748896]
+
+############## BASE w/ adaptive learning rate w/ longer training x 2 ##############
+Jacobian | decay = 0.1 | epoch 10000 | train 5000 test 4000 | 3 layer of 512 | Train: 0.65443  Test: 0.11625 | Learned: [0.8424720004554908, -0.0016828419871130033, -10.172767705981963] True: [0.8635345038770068, -0.005246071760486757, -14.524857759748896]
+
+############## BASE w/ adaptive learning rate w/ longer training x 4 ##############
+Jacobian | decay = 0.1 | epoch 20000 | train 5000 test 4000 | 3 layer of 512 | Train: 0.27828  Test: 0.09635 | Learned: [0.8335931840558601, 0.0006326229403725847, -11.741390918042166] True: [0.8635345038770068, -0.005246071760486757, -14.524857759748896]
+
+############## BASE w/ bigger adaptive learning rate w/ longer training x 4 ##############
+
+
+
+
+
+############## Larger Dataset ##############
+Jacobian | lr=fixed | epoch 5000 | train 10000 test 8000 | 3 layer of 512 | Train: 0.44640  Test: 1.39415 | Learned: tensor([ 0.8491,  0.0552, -4.5283]) True: tensor([ 8.6353e-01, -5.2465e-03, -1.4525e+01])
+
+############## Larger Dataset w/ longer training x 2 ##############
+
+############## Larger Dataset w/ longer training x 4 ##############
+
+
+
+############## Higher Dim MLP + BASE + adaptive lr ##############
+Jacobian | decay = 0.1 | epoch 5000 | train 5000 test 4000 | 3 layer of 1024 | Train: 1.10877  Test: 0.22599 | Learned: [0.9023248958819257, -0.0061302905576540445, -8.864937061276509] True: [0.8676553188439751, -0.00019278017258632949, -14.534031166074177]
+
+############## Higher Dim MLP + BASE + adaptive lr + larger dataset ##############
+Jacobian | decay = 0.1 | epoch 5000 | train 10000 test 8000 | 3 layer of 1024 | Train: 1.25280  Test: 1.91986 | Learned: [0.8915776586760421, 0.060396353161197756, -8.625921773283869] True: [0.8676553188439751, -0.00019278017258632949, -14.534031166074177]
+
+############## Higher Dim MLP + BASE + adaptive lr ##############
+Jacobian | decay = 0.01 | epoch 10000 | train 5000 test 4000 | 3 layer of 1024 | Train: 0.75652  Test: 1.38674 | Learned: [0.8955507003096803, 0.04285078681818466, -10.106471874124967] True: [0.8676553188439751, -0.00019278017258632949, -14.534031166074177]
+
+
+############## GRU + BASE ##############
+
+
+############## CNN + BASE ##############

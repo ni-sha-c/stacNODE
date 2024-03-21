@@ -47,27 +47,59 @@ def rossler(t, X):
     dz = b + z * (x - c)
     return torch.stack([dx, dy, dz])
 
-class ODE_Lorenz(nn.Module):
+class ODE_MLP(nn.Module):
     '''Define Neural Network that approximates differential equation system of Chaotic Lorenz'''
-    # Neural Propogator?
 
-    def __init__(self, y_dim=3, n_hidden=32*9):
-        super(ODE_Lorenz, self).__init__()
+    def __init__(self, y_dim=3, n_hidden=512):
+        super(ODE_MLP, self).__init__()
         self.net = nn.Sequential(
-            nn.Linear(3, 512),
+            nn.Linear(3, n_hidden),
             nn.GELU(),
-            # nn.Linear(512, 512),
-            # nn.GELU(),
-            # nn.Linear(512, 1024),
-            # nn.GELU(),
-            # nn.Linear(1024, 1024),
-            # nn.GELU(),
-            nn.Linear(1024, 3)
+            nn.Linear(n_hidden, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, 3)
         )
 
     def forward(self, t, y):
         res = self.net(y)
         return res
+
+class ODE_CNN(nn.Module):
+
+    def __init__(self, y_dim=3, n_hidden=512):
+        super(ODE_CNN, self).__init__()
+        self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
+        self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
+        self.activation = nn.GELU()
+        self.net = nn.Sequential(
+            nn.Linear(3, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, 3)
+        )
+
+    def forward(self, t, y):
+        if y.dim() == 1: # needed for vmap
+            y = y.reshape(1, -1)
+        
+        # y = self.net(y)
+        # encoded_y = self.conv1d(y.T)
+        # encoded_y = self.conv1d(encoded_y)
+        # res = self.net(encoded_y.T)
+
+        # encoded_y = self.net(y)
+        # y = self.conv1d(encoded_y.T)
+        # res = y.T
+
+        # y = self.net(y)
+        y = torch.unsqueeze(y.T, 0)
+        encoded_y = self.conv2d(y)
+        encoded_y = self.conv2d(encoded_y)
+        encoded_y = self.conv2d(encoded_y)
+        # res = self.net(encoded_y.squeeze().T)
+        res = encoded_y.squeeze().T
+        return res
+
+
 
 ##############
 ## Training ##
@@ -85,20 +117,29 @@ def create_data(dyn_info, n_train, n_test, n_trans):
     ##### create test dataset #####
     traj = traj[n_train:]
     X_test = traj[:n_test]
-    Y_test = traj[1:]
+    Y_test = traj[1:n_test+1]
     return [X, Y, X_test, Y_test]
+
+def update_lr(optimizer, epoch, total_e, origin_lr):
+    """ A decay factor of 0.1 raised to the power of epoch / total_epochs. Learning rate decreases gradually as the epoch number increases towards the total number of epochs. """
+    new_lr = origin_lr * (0.1 ** (epoch / float(total_e)))
+    for params in optimizer.param_groups:
+        params['lr'] = new_lr
+    return
 
 def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type):
 
     # Initialize
     n_store, k  = 100, 0
-    ep_num, loss_hist, test_loss_hist = torch.empty(n_store,dtype=int), torch.empty(n_store), torch.empty(n_store)
+    ep_num, loss_hist, test_loss_hist = torch.empty(n_store+1,dtype=int), torch.empty(n_store+1), torch.empty(n_store+1)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     X, Y, X_test, Y_test = dataset
     X, Y, X_test, Y_test = X.to(device), Y.to(device), X_test.to(device), Y_test.to(device)
     num_train = X.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
     t_eval_point = torch.linspace(0, time_step, 2).to(device)
+
+    torch.cuda.empty_cache()
     
     # Compute True Jacobian
     if loss_type == "Jacobian":
@@ -116,22 +157,26 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
-            # Compute Jacobian
-            m = lambda y: model(0, y)
-            compute_batch_jac = torch.vmap(torch.func.jacrev(m))
-            cur_model_J = compute_batch_jac(X)
+            # # Compute Jacobian
+            jacrev = torch.func.jacrev(model, argnums=1)
+            compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0))
+            cur_model_J = compute_batch_jac(0, X).to(device)
             train_loss += reg_param*criterion(True_J, cur_model_J)
 
         train_loss.backward()
         optimizer.step()
+        update_lr(optimizer, i, epochs, args.lr)
 
         # Save Training and Test History
-        if i % (epochs//n_store) == 0:
+        if i % (epochs//n_store) == 0 or (i == epochs-1):
+            JAC_plot_path = '../plot/Vector_field/train_cnn/JAC_'+str(i)+'.jpg'
+            plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+
             with torch.no_grad():
                 model.eval()
                 y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
                 y_pred_test = y_pred_test.to(device)
-                # save predicted node feature for analysis              
+                # save predicted node feature for analysis            
                 test_loss = criterion(y_pred_test, Y_test) * (1/time_step/time_step)
                 print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
 
@@ -139,7 +184,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 k = k + 1
 
     if loss_type == "Jacobian":
-        for i in [0, -3, -2, -1]:
+        for i in [0, 1, -2, -1]:
             print("Point:", X[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
 
     return ep_num, loss_hist, test_loss_hist
@@ -233,8 +278,7 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
     x = torch.linspace(-50, 50, N)
     y = torch.linspace(-50, 50, N)
     X, Y = torch.meshgrid(x,y)
-    U, V = torch.zeros(N,N), torch.zeros(N,N)
-    print("shape", X.shape, Y.shape)
+    U, V = np.zeros((N,N)), np.zeros((N,N))
 
     for i in range(N):
         for j in range(N):
@@ -242,19 +286,16 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
                 phi = torch.stack([torch.tensor(X[i,j]), torch.tensor(Y[i,j]), torch.tensor(20.)]).to('cuda')
             else:
                 phi = torch.stack([X[i,j].clone().detach(), torch.tensor(0), Y[i,j].clone().detach()]).to('cuda')
-            O = model(0., phi)
-            U[i,j], V[i,j] = O[0], O[idx]
-
-    print(X.requires_grad, Y.requires_grad, U.requires_grad, V.requires_grad)
+            O = model(0., phi).detach().cpu().numpy()
+            if O.ndim == 1:
+                U[i,j], V[i,j] = O[0], O[idx]
+            else:
+                U[i,j], V[i,j] = O[0, 0], O[0, idx]
 
     fig = figure(figsize=(5,4))
     ax = fig.add_subplot(111)
-    if U.requires_grad:
-        contourf = ax.contourf(X, Y, torch.sqrt(U**2 + V**2).detach().numpy(), cmap='jet')
-        ax.streamplot(X.T.numpy(),Y.T.numpy(),U.T.detach().numpy(),V.T.detach().numpy(), color='k')
-    else:
-        contourf = ax.contourf(X, Y, torch.sqrt(U**2 + V**2), cmap='jet')
-        ax.streamplot(X.T.numpy(),Y.T.numpy(),U.T.numpy(),V.T.numpy(), color='k')
+    contourf = ax.contourf(X, Y, np.sqrt(U**2 + V**2), cmap='jet')
+    ax.streamplot(X.T.numpy(),Y.T.numpy(),U.T,V.T, color='k')
 
     ax.set_xlim([x.min(),x.max()])
     ax.set_ylim([y.min(),y.max()])
@@ -268,6 +309,7 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
     fig.colorbar(contourf)
     tight_layout()
     savefig(path, format='jpg', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
+    close()
     return
 
 
@@ -280,51 +322,31 @@ def lyap_exps(dyn_sys_info, true_traj, iters, method, model):
     # QR Method where U = tangent vector, V = regular system
     U = torch.eye(dim)
     lyap_exp = [] #empty list to store the lengths of the orthogonal axes
-
     real_time = iters * time_step
     t_eval_point = torch.linspace(0, time_step, 2)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    t_eval_point = t_eval_point.to(device)
+    model.eval()
 
-    if method == "NODE":
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        t_eval_point = t_eval_point.to(device)
-        model.eval()
+    for i in range(iters):
+        if i % 1000 == 0:
+            print(i)
 
-        for i in range(iters):
-            if i % 1000 == 0:
-                print(i)
-
-            #update x0
-            x0 = true_traj[i].to(device)
+        #update x0
+        x0 = true_traj[i].to(device)
+        if method == "NODE":
             cur_J = F.jacobian(lambda x: torchdiffeq.odeint(model, x, t_eval_point, method="rk4"), x0)[1]
+        else:
+            cur_J = F.jacobian(lambda x: torchdiffeq.odeint(dyn_sys_func, x, t_eval_point, method="rk4"), x0)[1]
 
-            J = torch.matmul(cur_J.to("cpu"), U.to("cpu"))
+        J = torch.matmul(cur_J, U.to(device))
+        Q, R = torch.linalg.qr(J)
+        lyap_exp.append(torch.log(abs(R.diagonal())).detach().cpu().numpy())
+        U = Q #new axes after iteration
 
-            # QR Decomposition for J
-            Q, R = torch.linalg.qr(J)
+    LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
 
-            lyap_exp.append(torch.log(abs(R.diagonal())))
-            U = Q #new axes after iteration
-
-        LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
-
-    else:
-        for i in range(iters):
-
-            #update x0
-            x0 = true_traj[i]
-            cur_J = F.jacobian(lambda x: torchdiffeq.odeint(dyn_sys_func, x, t_eval_point, method=method), x0)[1]
-         
-            J = torch.matmul(cur_J, U)
-
-            # QR Decomposition for J
-            Q, R = torch.linalg.qr(J)
-
-            lyap_exp.append(torch.log(abs(R.diagonal())))
-            U = Q #new axes after iteration
-
-        LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
-
-    return torch.tensor(LE)
+    return LE
 
 
 if __name__ == '__main__':
@@ -337,14 +359,16 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
-    parser.add_argument("--lr", type=float, default=5e-4)
-    parser.add_argument("--weight_decay", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--num_epoch", type=int, default=5000)
-    parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=8000)
+    parser.add_argument("--num_train", type=int, default=8000)
+    parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=0)
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE", "Auto_corr"])
-    parser.add_argument("--reg_param", type=float, default=1e-2)
+    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
+    parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "GRU"])
+    parser.add_argument("--n_hidden", type=int, default=512)
+    parser.add_argument("--reg_param", type=float, default=500)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
 
 
@@ -358,18 +382,22 @@ if __name__ == '__main__':
     dataset = create_data(dyn_sys_info, n_train=args.num_train, n_test=args.num_test, n_trans=args.num_trans)
 
     # Create model
-    m = ODE_Lorenz(y_dim=dim, n_hidden=dim).to(device)
+    if args.model_type == "MLP":
+        m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden).to(device)
+    elif args.model_type == "CNN":
+        m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
 
-    print("Training...") 
-    # Train the model, return node
+    print("Training...") # Train the model, return node
     epochs, loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
 
     # plot things
     plot_loss(epochs, loss_hist, test_loss_hist) 
     plot_vf(m, dyn_sys_info)
     JAC_plot_path = '../plot/Vector_field/JAC.jpg'
+    True_plot_path = '../plot/Vector_field/True.jpg'
     plot_vector_field(m, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-    plot_attractor(m, dyn_sys_info, 20)
+    plot_vector_field(lorenz, path=True_plot_path, idx=1, t=0., N=100, device='cuda')
+    plot_attractor(m, dyn_sys_info, 50)
 
     # compute LE
     true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
