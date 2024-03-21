@@ -64,15 +64,44 @@ class ODE_MLP(nn.Module):
         res = self.net(y)
         return res
 
+class ODE_HigherDim_CNN(nn.Module):
+
+    def __init__(self, y_dim=3, n_hidden=512):
+        super(ODE_HigherDim_CNN, self).__init__()
+        self.emb = nn.Sequential(
+                nn.Linear(3, 9),
+                nn.Linear(9, 9))
+        self.conv2d = nn.Conv2d(1, 1, kernel_size=(3,3), padding=1, bias=False)
+        self.net = nn.Sequential(
+            nn.Linear(9, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, 3)
+        )
+
+    def forward(self, t, y):
+        matrix = self.emb(y)
+        matrix = matrix.reshape(-1, 1, 3, 3)
+
+        # y = torch.matmul(matrix.reshape(-1, 3, 3), y.T)
+        # y = self.conv2d(y)
+        y = self.conv2d(matrix)
+        y = self.conv2d(y)
+        y = self.conv2d(y)
+        res = self.net(y.reshape(-1, 9))
+        return res
+
 class ODE_CNN(nn.Module):
 
     def __init__(self, y_dim=3, n_hidden=512):
         super(ODE_CNN, self).__init__()
         self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
         self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
-        self.activation = nn.GELU()
         self.net = nn.Sequential(
             nn.Linear(3, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, n_hidden),
             nn.GELU(),
             nn.Linear(n_hidden, 3)
         )
@@ -81,23 +110,12 @@ class ODE_CNN(nn.Module):
         if y.dim() == 1: # needed for vmap
             y = y.reshape(1, -1)
         
-        # y = self.net(y)
-        # encoded_y = self.conv1d(y.T)
-        # encoded_y = self.conv1d(encoded_y)
-        # res = self.net(encoded_y.T)
-
-        # encoded_y = self.net(y)
-        # y = self.conv1d(encoded_y.T)
-        # res = y.T
-
-        # y = self.net(y)
         y = torch.unsqueeze(y.T, 0)
-        encoded_y = self.conv2d(y)
-        encoded_y = self.conv2d(encoded_y)
-        encoded_y = self.conv2d(encoded_y)
-        # res = self.net(encoded_y.squeeze().T)
-        res = encoded_y.squeeze().T
-        return res
+        y = self.conv2d(y)
+        y = self.conv2d(y)
+        y = self.conv2d(y)
+        y = self.net(y.squeeze().T)
+        return y
 
 
 
@@ -169,8 +187,9 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
 
         # Save Training and Test History
         if i % (epochs//n_store) == 0 or (i == epochs-1):
-            JAC_plot_path = '../plot/Vector_field/train_cnn/JAC_'+str(i)+'.jpg'
-            plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+            if loss_type == "Jacobian":
+                JAC_plot_path = '../plot/Vector_field/train_cnn/JAC_'+str(i)+'.jpg'
+                plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
 
             with torch.no_grad():
                 model.eval()
@@ -361,14 +380,14 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=5000)
+    parser.add_argument("--num_epoch", type=int, default=2000)
     parser.add_argument("--num_train", type=int, default=8000)
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
-    parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "GRU"])
+    parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
-    parser.add_argument("--reg_param", type=float, default=500)
+    parser.add_argument("--reg_param", type=float, default=800)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
 
 
@@ -386,6 +405,8 @@ if __name__ == '__main__':
         m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden).to(device)
     elif args.model_type == "CNN":
         m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
+    elif args.model_type == "HigherDimCNN":
+        m = ODE_HigherDim_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
 
     print("Training...") # Train the model, return node
     epochs, loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
