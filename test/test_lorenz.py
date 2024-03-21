@@ -18,7 +18,7 @@ from mpl_toolkits.mplot3d import axes3d
 ########################
 ### Dynamical System ###
 ########################
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def lorenz(t, u, params=[10.0,28.0,8/3]):
     """ Lorenz chaotic differential equation: du/dt = f(t, u)
     t: time T to evaluate system
@@ -331,41 +331,28 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
     close()
     return
 
-
-def lyap_exps(dyn_sys_info, true_traj, iters, method, model):
-    ''' Compute Lyapunov Exponents 
-        args: path = path to model '''
-
-    # Initialize parameter
-    dyn_sys_func, dim, time_step = dyn_sys_info
-    # QR Method where U = tangent vector, V = regular system
-    U = torch.eye(dim)
-    lyap_exp = [] #empty list to store the lengths of the orthogonal axes
-    real_time = iters * time_step
-    t_eval_point = torch.linspace(0, time_step, 2)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    t_eval_point = t_eval_point.to(device)
-    model.eval()
-
+def rk4(x, f, dt):
+    k1 = f(0, x)
+    k2 = f(0, x + dt*k1/2)
+    k3 = f(0, x + dt*k2/2)
+    k4 = f(0, x + dt*k3)
+    return x + dt/6*(k1 + 2*k2 + 2*k3 + k4)
+    
+def lyap_exps(dyn_sys_info, traj, iters):
+    model, dim, time_step = dyn_sys_info
+    LE = torch.zeros(dim).to(device)
+    traj_gpu = traj.to(device)
+    f = lambda x: rk4(x, model, time_step)
+    Jac = torch.vmap(torch.func.jacrev(f))(traj_gpu)
+    Q = torch.rand(dim,dim).to(device)
+    eye_cuda = torch.eye(dim).to(device)
     for i in range(iters):
-        if i % 1000 == 0:
-            print(i)
-
-        #update x0
-        x0 = true_traj[i].to(device)
-        if method == "NODE":
-            cur_J = F.jacobian(lambda x: torchdiffeq.odeint(model, x, t_eval_point, method="rk4"), x0)[1]
-        else:
-            cur_J = F.jacobian(lambda x: torchdiffeq.odeint(dyn_sys_func, x, t_eval_point, method="rk4"), x0)[1]
-
-        J = torch.matmul(cur_J, U.to(device))
-        Q, R = torch.linalg.qr(J)
-        lyap_exp.append(torch.log(abs(R.diagonal())).detach().cpu().numpy())
-        U = Q #new axes after iteration
-
-    LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
-
-    return LE
+        if i > 0 and i % 1000 == 0:
+            print("Iteration: ", i, ", LE[0]: ", LE[0].detach().cpu().numpy()/i/time_step)
+        Q = torch.matmul(Jac[i], Q)
+        Q, R = torch.linalg.qr(Q)
+        LE += torch.log(abs(torch.diag(R)))
+    return LE/iters/time_step
 
 
 if __name__ == '__main__':
@@ -412,16 +399,21 @@ if __name__ == '__main__':
     epochs, loss_hist, test_loss_hist= train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
 
     # plot things
-    plot_loss(epochs, loss_hist, test_loss_hist) 
-    plot_vf(m, dyn_sys_info)
-    JAC_plot_path = '../plot/Vector_field/JAC.jpg'
-    True_plot_path = '../plot/Vector_field/True.jpg'
-    plot_vector_field(m, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-    plot_vector_field(lorenz, path=True_plot_path, idx=1, t=0., N=100, device='cuda')
-    plot_attractor(m, dyn_sys_info, 50)
+    #plot_loss(epochs, loss_hist, test_loss_hist) 
+    #plot_vf(m, dyn_sys_info)
+    #JAC_plot_path = '../plot/Vector_field/JAC.jpg'
+    #True_plot_path = '../plot/Vector_field/True.jpg'
+    #plot_vector_field(m, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+    #plot_vector_field(lorenz, path=True_plot_path, idx=1, t=0., N=100, device='cuda')
+    #plot_attractor(m, dyn_sys_info, 50)
 
     # compute LE
     true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
-    learned_LE = lyap_exps(dyn_sys_info, true_traj, 30000, "NODE", m)
-    True_LE = lyap_exps(dyn_sys_info, true_traj, 30000, "rk4", m)
-    print("Learned:", learned_LE, "True:", True_LE)
+    print("Computing LEs of NN...")
+    learned_LE = lyap_exps([m, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
+
+    print("Computing true LEs...")
+    True_LE = lyap_exps(dyn_sys_info, true_traj, 30000).detach().cpu().numpy()
+    
+    print("Learned:", learned_LE)
+    print("True:", True_LE)
