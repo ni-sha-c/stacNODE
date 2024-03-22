@@ -6,10 +6,8 @@ num_train: 8000
 num_test: 6000
 num_trans: 0
 loss_type: Jacobian
-dyn_sys: rossler
-model_type: MLP
+dyn_sys: lorenz
+model_type: HigherDimCNN
 n_hidden: 512
 reg_param: 800
 optim_name: AdamW
-Learned LE: [ 6.4268194e-02  3.8959065e-03 -5.3697686e+00]
-True LE: [ 6.6912517e-02  4.8901641e-04 -5.3909564e+00]

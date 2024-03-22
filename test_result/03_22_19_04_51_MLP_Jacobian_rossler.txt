@@ -11,5 +11,5 @@ model_type: MLP
 n_hidden: 512
 reg_param: 800
 optim_name: AdamW
-Learned LE: [ 6.4268194e-02  3.8959065e-03 -5.3697686e+00]
-True LE: [ 6.6912517e-02  4.8901641e-04 -5.3909564e+00]
+Learned LE: [ 6.4321250e-02  3.8444039e-03 -5.3697686e+00]
+True LE: [ 6.6912703e-02  4.8865855e-04 -5.3909554e+00]

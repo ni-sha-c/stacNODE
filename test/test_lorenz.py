@@ -423,7 +423,7 @@ if __name__ == '__main__':
     plot_loss(epochs, loss_hist, test_loss_hist, loss_path) 
     if args.loss_type == "Jacobian":
         plot_loss(epochs, jac_train_hist, jac_test_hist, jac_loss_path) 
-        plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist), abs(test_loss_hist - args.reg_param*jac_test_hist), mse_loss_path) 
+        plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
 
     # Plot vector field & phase space
     plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
