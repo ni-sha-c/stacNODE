@@ -67,29 +67,27 @@ class ODE_HigherDim_CNN(nn.Module):
 
     def __init__(self, y_dim=3, n_hidden=512):
         super(ODE_HigherDim_CNN, self).__init__()
-        self.emb = nn.Sequential(
-                nn.Linear(3, 9),
-                nn.Linear(9, 9))
-        self.conv2d = nn.Conv2d(1, 1, kernel_size=(3,3), padding=1, bias=False)
+        self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
         self.net = nn.Sequential(
-            nn.Linear(9, n_hidden),
+            nn.Linear(3, n_hidden),
             nn.GELU(),
             nn.Linear(n_hidden, n_hidden),
             nn.GELU(),
             nn.Linear(n_hidden, 3)
         )
+        init = torch.randn(3, 3)
+        self.matrix = nn.Parameter(init)
 
     def forward(self, t, y):
-        matrix = self.emb(y)
-        matrix = matrix.reshape(-1, 1, 3, 3)
-
-        # y = torch.matmul(matrix.reshape(-1, 3, 3), y.T)
-        # y = self.conv2d(y)
-        y = self.conv2d(matrix)
+        if y.dim() == 1: # needed for vmap
+            y = y.reshape(1, -1)
+        
+        y = torch.matmul(self.matrix, y.T)
+        y = torch.unsqueeze(y, 0)
         y = self.conv2d(y)
         y = self.conv2d(y)
-        res = self.net(y.reshape(-1, 9))
-        return res
+        y = self.net(y.squeeze().T)
+        return y
 
 class ODE_CNN(nn.Module):
 
@@ -144,7 +142,7 @@ def update_lr(optimizer, epoch, total_e, origin_lr):
         params['lr'] = new_lr
     return
 
-def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type):
+def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type, model_type):
 
     # Initialize
     n_store, k  = 100, 0
@@ -154,6 +152,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     X, Y, X_test, Y_test = X.to(device), Y.to(device), X_test.to(device), Y_test.to(device)
     num_train = X.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
+    dyn_sys_type = "lorenz" if dyn_sys == lorenz else "rossler"
     t_eval_point = torch.linspace(0, time_step, 2).to(device)
     torch.cuda.empty_cache()
     
@@ -161,7 +160,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     if loss_type == "Jacobian":
         jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
         print("Jacobian loss!")
-        f = lambda x: lorenz(0, x)
+        f = lambda x: dyn_sys(0, x)
         true_jac_fn = torch.vmap(torch.func.jacrev(f))
         True_J = true_jac_fn(X)
         Test_J = true_jac_fn(X_test)
@@ -201,7 +200,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     test_model_J = compute_batch_jac(0, X_test).to(device)
                     test_jac_norm_diff = criterion(Test_J, test_model_J)
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
-                    JAC_plot_path = '../plot/Vector_field/train_cnn/JAC_'+str(i)+'.jpg'
+                    JAC_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/JAC_'+str(i)+'.jpg'
                     plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
                 k = k + 1
 
@@ -269,6 +268,7 @@ def plot_attractor(model, dyn_info, time, path):
 
 def plot_vf_err(model, dyn_info, model_type, loss_type):
     dyn, dim, time_step = dyn_info
+    dyn_sys_type = "lorenz" if dyn == lorenz else "rossler"
     orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
     orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 4, time_step), method='rk4', rtol=1e-8)
     len_o = orbit.shape[0]
@@ -279,20 +279,21 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     vf_nn, vf = vf_nn.T, vf.T
     ax = figure().add_subplot()
     vf_nn, vf = vf_nn.numpy(), vf.numpy()
-    #mag = np.linalg.norm(vf, axis=0)
+    # mag = np.linalg.norm(vf, axis=0)
     mag = abs(vf[2])
-    #err = np.linalg.norm(vf_nn - vf, axis=0)
+    # err = np.linalg.norm(vf_nn - vf, axis=0)
     err = abs(vf_nn[2]-vf[2])
     t = time_step*np.arange(0, len_o)
     ax.plot(t, err/mag*100, "o", label="err vec z-comp", ms=3.0)
     ax.set_xlabel("time",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
-    ax.set_ylim(0, 20)
+    ax.set_ylim(0, 50)
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
-    savefig('../plot/Relative_error/'+str(model_type)+'_'+str(loss_type)+'err.png')
+    path = f"../plot/Relative_error/{args.model_type}_{args.loss_type}_{dyn_sys_type}.png"
+    savefig(path)
 
 
 def plot_vector_field(model, path, idx, t, N, device='cuda'):
@@ -377,7 +378,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
-    parser.add_argument("--dyn_sys", default="MSE", choices=["Jacobian", "MSE"])
+    parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
     parser.add_argument("--reg_param", type=float, default=800)
@@ -386,12 +387,13 @@ if __name__ == '__main__':
     # Initialize Settings
     args = parser.parse_args()
     dim = 3
-    dyn_sys_info = [lorenz, dim, args.time_step]
+    dyn_sys_func = lorenz if args.dyn_sys == "lorenz" else rossler
+    dyn_sys_info = [dyn_sys_func, dim, args.time_step]
     criterion = torch.nn.MSELoss()
 
     # Save initial settings
     start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
-    out_file = os.path.join("../test_result/", f"{start_time}_model_{args.model_type}_{args.loss_type}.txt")
+    out_file = os.path.join("../test_result/", f"{start_time}_{args.model_type}_{args.loss_type}_{args.dyn_sys}.txt")
     logging.basicConfig(filename=out_file, level=logging.INFO, format="%(message)s")
     logger = logging.getLogger()
     for arg, value in vars(args).items():
@@ -409,28 +411,27 @@ if __name__ == '__main__':
         m = ODE_HigherDim_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
 
     print("Training...") # Train the model, return node
-    epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
+    epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type)
 
     # Plot Loss
-    loss_path = f"../plot/Loss/Total_{args.model_type}_{args.loss_type}_{start_time}.png"
-    jac_loss_path = f"../plot/Loss/Jacobian_matching_{args.model_type}_{args.loss_type}_{start_time}.png"
-    mse_loss_path = f"../plot/Loss/MSE_part_{args.model_type}_{args.loss_type}_{start_time}.png"
+    loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Total_{start_time}.png"
+    jac_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Jacobian_matching_{start_time}.png"
+    mse_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_MSE_part_{start_time}.png"
     true_plot_path = f"../plot/Vector_field/True_{args.dyn_sys}.png"
-    phase_path = f"../plot/Phase_plot/{args.dyn_sys}.png"
-
+    phase_path = f"../plot/Phase_plot/{args.dyn_sys}_{args.model_type}_{args.loss_type}.png"
 
     plot_loss(epochs, loss_hist, test_loss_hist, loss_path) 
     if args.loss_type == "Jacobian":
         plot_loss(epochs, jac_train_hist, jac_test_hist, jac_loss_path) 
-        plot_loss(epochs, loss_hist - args.reg_param*jac_train_hist, test_loss_hist - args.reg_param*jac_test_hist, mse_loss_path) 
+        plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist), abs(test_loss_hist - args.reg_param*jac_test_hist), mse_loss_path) 
 
     # Plot vector field & phase space
     plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
-    plot_vector_field(lorenz, path=true_plot_path, idx=1, t=0., N=100, device='cuda')
+    plot_vector_field(dyn_sys_func, path=true_plot_path, idx=1, t=0., N=100, device='cuda')
     plot_attractor(m, dyn_sys_info, 50, phase_path)
 
     # compute LE
-    true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
+    true_traj = torchdiffeq.odeint(dyn_sys_func, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
     print("Computing LEs of NN...")
     learned_LE = lyap_exps([m, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
     print("Computing true LEs...")
