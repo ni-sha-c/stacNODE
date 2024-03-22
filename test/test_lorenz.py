@@ -229,7 +229,7 @@ def plot_loss(epochs, train, test, path):
     tight_layout()
     savefig(path, bbox_inches ='tight', pad_inches = 0.1)
 
-def plot_attractor(model, dyn_info, time):
+def plot_attractor(model, dyn_info, time, path):
     # generate true orbit and learned orbit
     dyn, dim, time_step = dyn_info
     tran_orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
@@ -264,10 +264,10 @@ def plot_attractor(model, dyn_info, time):
             axs[x,y].xaxis.label.set_size(42)
             axs[x,y].yaxis.label.set_size(42)
     tight_layout()
-    fig.savefig("../plot/Phase_plot/phase_plot.png", format='png', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
+    fig.savefig(path, format='png', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
     return
 
-def plot_vf(model, dyn_info, model_type, loss_type):
+def plot_vf_err(model, dyn_info, model_type, loss_type):
     dyn, dim, time_step = dyn_info
     orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
     orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 4, time_step), method='rk4', rtol=1e-8)
@@ -383,8 +383,6 @@ if __name__ == '__main__':
     parser.add_argument("--reg_param", type=float, default=800)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
 
-
-
     # Initialize Settings
     args = parser.parse_args()
     dim = 3
@@ -392,7 +390,7 @@ if __name__ == '__main__':
     criterion = torch.nn.MSELoss()
 
     # Save initial settings
-    start_time = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
     out_file = os.path.join("../test_result/", f"{start_time}_model_{args.model_type}_{args.loss_type}.txt")
     logging.basicConfig(filename=out_file, level=logging.INFO, format="%(message)s")
     logger = logging.getLogger()
@@ -413,18 +411,23 @@ if __name__ == '__main__':
     print("Training...") # Train the model, return node
     epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type)
 
-    # plot things
-    loss_path = '../plot/Loss/'+str(args.model_type)+'_'+str(args.loss_type)+'.png'
-    jac_loss_path = '../plot/Loss/JAC_'+str(args.model_type)+'_'+str(args.loss_type)+'.png'
+    # Plot Loss
+    loss_path = f"../plot/Loss/Total_{args.model_type}_{args.loss_type}_{start_time}.png"
+    jac_loss_path = f"../plot/Loss/Jacobian_matching_{args.model_type}_{args.loss_type}_{start_time}.png"
+    mse_loss_path = f"../plot/Loss/MSE_part_{args.model_type}_{args.loss_type}_{start_time}.png"
+    true_plot_path = f"../plot/Vector_field/True_{args.dyn_sys}.png"
+    phase_path = f"../plot/Phase_plot/{args.dyn_sys}.png"
+
+
     plot_loss(epochs, loss_hist, test_loss_hist, loss_path) 
     if args.loss_type == "Jacobian":
         plot_loss(epochs, jac_train_hist, jac_test_hist, jac_loss_path) 
-    plot_vf(m, dyn_sys_info, args.model_type, args.loss_type)
-    #JAC_plot_path = '../plot/Vector_field/JAC.jpg'
-    #True_plot_path = '../plot/Vector_field/True.jpg'
-    #plot_vector_field(m, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-    #plot_vector_field(lorenz, path=True_plot_path, idx=1, t=0., N=100, device='cuda')
-    #plot_attractor(m, dyn_sys_info, 50)
+        plot_loss(epochs, loss_hist - args.reg_param*jac_train_hist, test_loss_hist - args.reg_param*jac_test_hist, mse_loss_path) 
+
+    # Plot vector field & phase space
+    plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
+    plot_vector_field(lorenz, path=true_plot_path, idx=1, t=0., N=100, device='cuda')
+    plot_attractor(m, dyn_sys_info, 50, phase_path)
 
     # compute LE
     true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
