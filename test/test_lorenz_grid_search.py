@@ -96,7 +96,7 @@ class ODE_CNN(nn.Module):
     def __init__(self, y_dim=3, n_hidden=512):
         super(ODE_CNN, self).__init__()
         self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
-        self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
+        self.conv2d = nn.Conv2d(1, 1, kernel_size=(7,7), padding=3, bias=False)
         self.net = nn.Sequential(
             nn.Linear(3, n_hidden),
             nn.GELU(),
@@ -377,7 +377,6 @@ if __name__ == '__main__':
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
-    parser.add_argument("--dyn_sys", default="MSE", choices=["Jacobian", "MSE"])
     parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
     parser.add_argument("--reg_param", type=float, default=800)
@@ -432,6 +431,6 @@ if __name__ == '__main__':
     learned_LE = lyap_exps([m, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
     print("Computing true LEs...")
     True_LE = lyap_exps(dyn_sys_info, true_traj, 30000).detach().cpu().numpy()
-    logger.info("%s: %s", "Learned LE", str(learned_LE))
-    logger.info("%s: %s", "True LE", str(True_LE))
+    logger.info("%s: %s", "Learned LE", learned_LE)
+    logger.info("%s: %s", "True LE", True_LE)
     print("Learned:", learned_LE, "\n", "True:", True_LE)
