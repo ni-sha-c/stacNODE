@@ -5,9 +5,11 @@ num_epoch: 2000
 num_train: 8000
 num_test: 6000
 num_trans: 0
-loss_type: Jacobian
+loss_type: MSE
 dyn_sys: rossler
 model_type: MLP
 n_hidden: 512
 reg_param: 800
 optim_name: AdamW
+Learned LE: [ 1.3725525e+00 -1.4864836e-03 -1.9975864e+00]
+True LE: [ 6.7122787e-02  2.7391620e-03 -5.3952856e+00]

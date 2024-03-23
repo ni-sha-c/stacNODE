@@ -86,6 +86,7 @@ class ODE_HigherDim_CNN(nn.Module):
         y = torch.unsqueeze(y, 0)
         y = self.conv2d(y)
         y = self.conv2d(y)
+        y = self.conv2d(y)
         y = self.net(y.squeeze().T)
         return y
 
@@ -202,11 +203,16 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
                     JAC_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/JAC_'+str(i)+'.jpg'
                     plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+
                 k = k + 1
 
     if loss_type == "Jacobian":
         for i in [0, 1, -2, -1]:
             print("Point:", X[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
+    else:
+        MSE_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/MSE_'+str(i)+'.jpg'
+        plot_vector_field(model, path=MSE_plot_path, idx=1, t=0., N=100, device='cuda')
+        jac_diff_train, jac_diff_test = None, None
 
     return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test
 
@@ -279,16 +285,16 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     vf_nn, vf = vf_nn.T, vf.T
     ax = figure().add_subplot()
     vf_nn, vf = vf_nn.numpy(), vf.numpy()
-    # mag = np.linalg.norm(vf, axis=0)
-    mag = abs(vf[2])
-    # err = np.linalg.norm(vf_nn - vf, axis=0)
-    err = abs(vf_nn[2]-vf[2])
+    mag = np.linalg.norm(vf, axis=0)
+    # mag = abs(vf[2])
+    err = np.linalg.norm(vf_nn - vf, axis=0)
+    # err = abs(vf_nn[2]-vf[2])
     t = time_step*np.arange(0, len_o)
-    ax.plot(t, err/mag*100, "o", label="err vec z-comp", ms=3.0)
+    ax.plot(t, err/mag*100, "o", label=r"$\|Error\|_2$", ms=3.0)
     ax.set_xlabel("time",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
-    ax.set_ylim(0, 50)
+    ax.set_ylim(0, 2)
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
