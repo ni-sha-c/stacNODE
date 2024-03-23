@@ -49,19 +49,18 @@ def rossler(t, X):
 class ODE_MLP(nn.Module):
     '''Define Neural Network that approximates differential equation system of Chaotic Lorenz'''
 
-    def __init__(self, y_dim=3, n_hidden=512):
+    def __init__(self, y_dim=3, n_hidden=512, n_layers=2):
         super(ODE_MLP, self).__init__()
-        self.net = nn.Sequential(
-            nn.Linear(3, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, 3)
-        )
+        layers = [nn.Linear(y_dim, n_hidden), nn.GELU()]
+        for _ in range(n_layers - 1):
+            layers.extend([nn.Linear(n_hidden, n_hidden), nn.GELU()])
+        layers.append(nn.Linear(n_hidden, y_dim))
+        self.net = nn.Sequential(*layers)
 
     def forward(self, t, y):
         res = self.net(y)
         return res
+
 
 class ODE_HigherDim_CNN(nn.Module):
 
@@ -387,6 +386,7 @@ if __name__ == '__main__':
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
+    parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--reg_param", type=float, default=800)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
 
@@ -410,7 +410,7 @@ if __name__ == '__main__':
 
     # Create model
     if args.model_type == "MLP":
-        m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden).to(device)
+        m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
     elif args.model_type == "CNN":
         m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
     elif args.model_type == "HigherDimCNN":
