@@ -9,6 +9,7 @@ import argparse
 import json
 import logging
 import os
+import math
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
 
@@ -61,40 +62,13 @@ class ODE_MLP(nn.Module):
         res = self.net(y)
         return res
 
-
 class ODE_HigherDim_CNN(nn.Module):
-
-    def __init__(self, y_dim=3, n_hidden=512):
+    def __init__(self, y_dim=3, n_hidden=512, n_layers=2, n_heads=1):
         super(ODE_HigherDim_CNN, self).__init__()
-        self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
-        self.net = nn.Sequential(
-            nn.Linear(3, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, 3)
-        )
-        init = torch.randn(3, 3)
-        self.matrix = nn.Parameter(init)
-
-    def forward(self, t, y):
-        if y.dim() == 1: # needed for vmap
-            y = y.reshape(1, -1)
-        
-        y = torch.matmul(self.matrix, y.T)
-        y = torch.unsqueeze(y, 0)
-        y = self.conv2d(y)
-        y = self.conv2d(y)
-        y = self.conv2d(y)
-        y = self.net(y.squeeze().T)
-        return y
-
-class ODE_CNN(nn.Module):
-
-    def __init__(self, y_dim=3, n_hidden=512):
-        super(ODE_CNN, self).__init__()
         self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
         self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
+        self.attention = nn.MultiheadAttention(embed_dim=3, num_heads=n_heads, bias=False)
+        self.GELU = nn.GELU()
         self.net = nn.Sequential(
             nn.Linear(3, n_hidden),
             nn.GELU(),
@@ -110,10 +84,134 @@ class ODE_CNN(nn.Module):
         y = torch.unsqueeze(y.T, 0)
         y = self.conv2d(y)
         y = self.conv2d(y)
+
+        batch_size, channels, length = y.size()
+        y = y.reshape(batch_size, length, channels)
+        y, _ = self.attention(y, y, y)  # Self-attention
+        y = y.view(batch_size, channels, length)
+
         y = self.conv2d(y)
         y = self.net(y.squeeze().T)
         return y
 
+
+class ODE_CNN(nn.Module):
+
+    def __init__(self, y_dim=3, n_hidden=512, n_layers=2):
+        super(ODE_CNN, self).__init__()
+        self.batch_norm = nn.BatchNorm1d(y_dim)
+        self.GELU = nn.GELU()
+        self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
+        self.cv2d_3 = nn.Conv2d(1, 1, kernel_size=(9,9), padding=4, bias=False)
+        self.cv2d_0 = nn.Conv2d(1, 1, kernel_size=(7,7), padding=3, bias=False)
+        # self.cv2d_1 = nn.Conv2d(1, 1, kernel_size=(3,3), padding=2, bias=False)
+        self.cv2d_1 = nn.Conv2d(1, 1, kernel_size=(3,2), padding=1, bias=False)
+        self.cv2d_2 = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
+        self.cv2d_4 = nn.Conv2d(1, 1, kernel_size=(5,7), padding=3, bias=False)
+        self.cv2d_5 = nn.Conv2d(1, 1, kernel_size=(7,7), padding=3, bias=False)
+
+        layers = [nn.Linear(3, n_hidden), nn.SiLU()]
+        for _ in range(n_layers - 1):
+            layers.extend([nn.Linear(n_hidden, n_hidden), nn.SiLU()])
+        layers.append(nn.Linear(n_hidden, y_dim))
+        self.net = nn.Sequential(*layers)
+        self.avg_pool = nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
+        self.gamma = torch.ones(3, requires_grad=True).cuda()
+        self.beta = torch.zeros(3, requires_grad=True).cuda()
+
+    def forward(self, t, y):
+        if y.dim() == 1: # needed for vmap
+            y = y.reshape(1, -1)
+
+        y = torch.unsqueeze(y.T, 0)
+        # y = nn.functional.normalize(y, dim=0)
+
+        y = self.cv2d_1(y)
+        y = y[:, :, :-1]
+        # y = self.avg_pool(y)
+        y = self.cv2d_1(y)
+        y = y[:, :, :-1]
+        y = self.cv2d_1(y)
+        y = y[:, :, :-1]
+        y = self .cv2d_1(y)
+        y = y[:, :, :-1]
+        y = self .cv2d_1(y)
+        y = y[:, :, :-1]
+        
+        y = self.net(y.squeeze().T)
+        return y
+
+
+# Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
+# y = (y - torch.mean(y, axis=1)) / (torch.std(y, axis=1) + 1e-15) * self.gamma + self.beta
+
+class GRUCell(nn.Module):
+
+
+    def __init__(self, input_size, hidden_size, bias=True):
+        super(GRUCell, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.x2h = nn.Linear(input_size, 3 * hidden_size, bias=bias)
+        self.h2h = nn.Linear(hidden_size, 3 * hidden_size, bias=bias)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        std = 1.0 / math.sqrt(self.hidden_size)
+        for w in self.parameters():
+            w.data.uniform_(-std, std)
+    
+        
+    def forward(self, x, hidden):
+        
+        x = x.view(-1, x.size(1))
+        gate_x = self.x2h(x) 
+        gate_h = self.h2h(hidden)
+        i_r, i_i, i_n = gate_x.chunk(3, 1)
+        h_r, h_i, h_n = gate_h.chunk(3, 1)
+        resetgate = nn.Sigmoid(i_r + h_r)
+        inputgate = nn.Sigmoid(i_i + h_i)
+        newgate = nn.tanh(i_n + (resetgate * h_n))
+        
+        hy = newgate + inputgate * (hidden - newgate)
+        return hy
+
+class ODE_GRU(nn.Module):
+
+    def __init__(self, n_hidden, n_layers):
+        super(ODE_GRU, self).__init__()
+
+        self.gru_cell = GRUCell(3, n_hidden, n_layers)
+        self.net = nn.Linear(n_hidden, 3)
+        self.n_layers = n_layers
+        self.n_hidden = n_hidden
+        self.net = nn.Sequential(
+            nn.Linear(3, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.GELU(),
+            nn.Linear(n_hidden, 3)
+        )
+
+    def forward(self, t, y):
+        # input shape: (sequence length, input_dim)
+        if y.dim() == 1: # needed for vmap
+            y = y.reshape(1, -1)
+        elif y.dim() == 2:
+            y = torch.unsqueeze(y, 0)
+
+        h0 = torch.zeros(self.n_layers, y.size(0), self.n_hidden).cuda()
+        outs = []
+        hn = h0[0,:,:]
+        
+        for seq in range(y.size(1)):
+            hn = self.gru_cell(y[:,seq,:], hn) 
+            outs.append(hn)
+
+        outs = outs[-1].squeeze()
+        outs = self.net(outs) 
+        return outs
 
 
 ##############
@@ -176,10 +274,13 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         if loss_type == "Jacobian":
             # Compute Jacobian
             jacrev = torch.func.jacrev(model, argnums=1)
-            compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0))
+            compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
             cur_model_J = compute_batch_jac(0, X).to(device)
             jac_norm_diff = criterion(True_J, cur_model_J)
+        
+            # covariance_diff = criterion(torch.cov(Y.T), torch.cov(y_pred.T))
             train_loss += reg_param*jac_norm_diff
+            # train_loss += 800 * covariance_diff
 
         train_loss.backward()
         optimizer.step()
@@ -206,7 +307,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 k = k + 1
 
     if loss_type == "Jacobian":
-        for i in [0, 1, -2, -1]:
+        for i in [0, 1, 50, -2, -1]:
             print("Point:", X[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
     else:
         MSE_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/MSE_'+str(i)+'.jpg'
@@ -240,7 +341,7 @@ def plot_attractor(model, dyn_info, time, path):
     true_o = torchdiffeq.odeint(dyn, tran_orbit[-1], torch.arange(0, time, time_step), method='rk4', rtol=1e-8)
     learned_o = torchdiffeq.odeint(model.eval().to(device), tran_orbit[-1].to(device), torch.arange(0, time, time_step), method="rk4", rtol=1e-8).detach().cpu().numpy()
 
-    # create plot
+    # create plot of attractor with initial point starting from 
     fig, axs = subplots(2, 3, figsize=(24,12))
     cmap = cm.plasma
     num_row, num_col = axs.shape
@@ -274,9 +375,11 @@ def plot_attractor(model, dyn_info, time, path):
 def plot_vf_err(model, dyn_info, model_type, loss_type):
     dyn, dim, time_step = dyn_info
     dyn_sys_type = "lorenz" if dyn == lorenz else "rossler"
+
     orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
     orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 4, time_step), method='rk4', rtol=1e-8)
     len_o = orbit.shape[0]
+
     vf_nn = model(0, orbit.to('cuda')).detach().cpu()
     vf = torch.zeros(len_o, dim)
     for i in range(len_o):
@@ -285,20 +388,29 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     ax = figure().add_subplot()
     vf_nn, vf = vf_nn.numpy(), vf.numpy()
     mag = np.linalg.norm(vf, axis=0)
-    # mag = abs(vf[2])
     err = np.linalg.norm(vf_nn - vf, axis=0)
-    # err = abs(vf_nn[2]-vf[2])
     t = time_step*np.arange(0, len_o)
-    ax.plot(t, err/mag*100, "o", label=r"$\|Error\|_2$", ms=3.0)
+    percentage_err = err/mag*100
+
+    # For debugging purpose, will remove it later
+    print("vf_nn", vf_nn.shape)
+    print("vf", vf.shape)
+    print("vf_nn-vf", vf_nn - vf)
+    print("err", err, err.shape)
+    print("mag", mag, mag.shape)
+    print(percentage_err)
+    
+    ax.plot(t, percentage_err, "o", label=r"$\frac{\|\hat x - x\|_2}{\|x\|_2}$", ms=3.0)
     ax.set_xlabel("time",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
-    ax.set_ylim(0, 2)
+    ax.set_ylim(0, 50)
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
     path = f"../plot/Relative_error/{args.model_type}_{args.loss_type}_{dyn_sys_type}.png"
     savefig(path)
+    return percentage_err
 
 
 def plot_vector_field(model, path, idx, t, N, device='cuda'):
@@ -315,7 +427,7 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
             if idx == 1:
                 phi = torch.stack([X[i,j], Y[i,j], torch.tensor(20.)]).to('cuda')
             else:
-                phi = torch.stack([X[i,j].clone().detach(), torch.tensor(0), Y[i,j].clone().detach()]).to('cuda')
+                phi = torch.stack([X[i,j], torch.tensor(0), Y[i,j]]).to('cuda')
             O = model(0., phi).detach().cpu().numpy()
             if O.ndim == 1:
                 U[i,j], V[i,j] = O[0], O[idx]
@@ -326,7 +438,6 @@ def plot_vector_field(model, path, idx, t, N, device='cuda'):
     ax = fig.add_subplot(111)
     contourf = ax.contourf(X, Y, np.sqrt(U**2 + V**2), cmap='jet')
     ax.streamplot(X.T.numpy(),Y.T.numpy(),U.T,V.T, color='k')
-
     ax.set_xlim([x.min(),x.max()])
     ax.set_ylim([y.min(),y.max()])
     ax.set_xlabel(r"$x$", fontsize=17)
@@ -382,11 +493,11 @@ if __name__ == '__main__':
     parser.add_argument("--num_train", type=int, default=8000)
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=0)
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
+    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
-    parser.add_argument("--n_layers", type=int, default=4)
+    parser.add_argument("--n_layers", type=int, default=2)
     parser.add_argument("--reg_param", type=float, default=800)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
 
@@ -412,9 +523,11 @@ if __name__ == '__main__':
     if args.model_type == "MLP":
         m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
     elif args.model_type == "CNN":
-        m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
+        m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
     elif args.model_type == "HigherDimCNN":
-        m = ODE_HigherDim_CNN(y_dim=dim, n_hidden=args.n_hidden).to(device)
+        m = ODE_HigherDim_CNN(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
+    elif args.model_type == "GRU":
+        m = ODE_GRU(n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
 
     print("Training...") # Train the model, return node
     epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type)
@@ -423,8 +536,10 @@ if __name__ == '__main__':
     loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Total_{start_time}.png"
     jac_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Jacobian_matching_{start_time}.png"
     mse_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_MSE_part_{start_time}.png"
-    true_plot_path = f"../plot/Vector_field/True_{args.dyn_sys}.png"
+    true_plot_path_1 = f"../plot/Vector_field/True_{args.dyn_sys}_1.png"
+    true_plot_path_2 = f"../plot/Vector_field/True_{args.dyn_sys}_2.png"
     phase_path = f"../plot/Phase_plot/{args.dyn_sys}_{args.model_type}_{args.loss_type}.png"
+
 
     plot_loss(epochs, loss_hist, test_loss_hist, loss_path) 
     if args.loss_type == "Jacobian":
@@ -432,8 +547,9 @@ if __name__ == '__main__':
         plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
 
     # Plot vector field & phase space
-    plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
-    plot_vector_field(dyn_sys_func, path=true_plot_path, idx=1, t=0., N=100, device='cuda')
+    percentage_err = plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
+    plot_vector_field(dyn_sys_func, path=true_plot_path_1, idx=1, t=0., N=100, device='cuda')
+    plot_vector_field(dyn_sys_func, path=true_plot_path_2, idx=2, t=0., N=100, device='cuda')
     plot_attractor(m, dyn_sys_info, 50, phase_path)
 
     # compute LE
@@ -442,6 +558,13 @@ if __name__ == '__main__':
     learned_LE = lyap_exps([m, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
     print("Computing true LEs...")
     True_LE = lyap_exps(dyn_sys_info, true_traj, 30000).detach().cpu().numpy()
+    loss_hist, test_loss_hist, jac_train_hist, jac_test_hist
+
+    logger.info("%s: %s", "Training Loss", str(loss_hist[-1]))
+    logger.info("%s: %s", "Test Loss", str(test_loss_hist[-1]))
+    logger.info("%s: %s", "Jacobian term Training Loss", str(jac_train_hist[-1]))
+    logger.info("%s: %s", "Jacobian term Test Loss", str(jac_test_hist[-1]))
     logger.info("%s: %s", "Learned LE", str(learned_LE))
     logger.info("%s: %s", "True LE", str(True_LE))
+    logger.info("%s: %s", "Relative Error", str(percentage_err))
     print("Learned:", learned_LE, "\n", "True:", True_LE)

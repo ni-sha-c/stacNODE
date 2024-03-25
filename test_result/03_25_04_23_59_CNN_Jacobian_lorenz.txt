@@ -1,0 +1,16 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 10000
+num_train: 20000
+num_test: 6000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: lorenz
+model_type: CNN
+n_hidden: 512
+n_layers: 2
+reg_param: 1000.0
+optim_name: AdamW
+Learned LE: [  1.2361485   -0.34898663 -14.753501  ]
+True LE: [ 8.7589109e-01 -4.1168258e-03 -1.4541046e+01]
