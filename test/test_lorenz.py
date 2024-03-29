@@ -61,7 +61,38 @@ class ODE_MLP(nn.Module):
     def forward(self, t, y):
         res = self.net(y)
         return res
+    
 
+class ODE_MLP_skip(nn.Module):
+    def __init__(self, y_dim=3, n_hidden=512):
+        super(ODE_MLP_skip, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(y_dim, n_hidden),
+            nn.ReLU(),
+ 
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+ 
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+ 
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+ 
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+ 
+        )
+        self.skip = nn.Sequential(
+            nn.Linear(y_dim, n_hidden),
+            nn.ReLU(),
+        )
+        self.output = nn.Linear(n_hidden, y_dim)
+    
+    def forward(self, t, y):
+        res = self.net(y) + self.skip(y)
+        return self.output(res)
+    
 class ODE_HigherDim_CNN(nn.Module):
     def __init__(self, y_dim=3, n_hidden=512, n_layers=2, n_heads=1):
         super(ODE_HigherDim_CNN, self).__init__()
@@ -233,6 +264,21 @@ def create_data(dyn_info, n_train, n_test, n_trans):
     Y_test = traj[1:n_test+1]
     return [X, Y, X_test, Y_test]
 
+def calculate_relative_error(model, dyn, device):
+    # Simulate an orbit using the true dynamics
+    time_step = 0.01  # Example timestep, adjust as needed
+    orbit = torchdiffeq.odeint(dyn, torch.randn(3), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8).to(device)
+    
+    # Compute vector field from model and true dynamics
+    vf_nn = model(0, orbit).detach()
+    vf_true = torch.stack([dyn(0, orbit[i]) for i in range(orbit.size(0))])
+
+    # Calculate relative error
+    err = torch.linalg.norm(vf_nn - vf_true, dim=1)
+    mag = torch.linalg.norm(vf_true, dim=1)
+    relative_error = torch.mean(err / mag).item() * 100  # As percentage
+    return relative_error
+
 def update_lr(optimizer, epoch, total_e, origin_lr):
     """ A decay factor of 0.1 raised to the power of epoch / total_epochs. Learning rate decreases gradually as the epoch number increases towards the total number of epochs. """
     new_lr = origin_lr * (0.1 ** (epoch / float(total_e)))
@@ -264,11 +310,15 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         Test_J = true_jac_fn(X_test)
 
     # Training Loop
+    min_relative_error = 1000000
     for i in range(epochs):
         model.train()
         y_pred = torchdiffeq.odeint(model, X, t_eval_point, method="rk4")[-1]
         y_pred = y_pred.to(device)
         optimizer.zero_grad()
+        # print('++++++++++++')
+        # print("y_pred", y_pred.shape)
+        # print("Y", Y.shape)
         train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
@@ -290,18 +340,30 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         if i % (epochs//n_store) == 0 or (i == epochs-1):
             with torch.no_grad():
                 model.eval()
+
+
+                current_relative_error = calculate_relative_error(model, dyn_sys_info[0], device)
+                # Check if current model has the lowest relative error so far
+                if current_relative_error < min_relative_error:
+                    min_relative_error = current_relative_error
+                    # Save the model
+                    torch.save(model.state_dict(), f"{args.train_dir}/best_model.pth")
+                    logger.info(f"Epoch {i}: New minimal relative error: {min_relative_error:.2f}%, model saved.")
+
                 y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
                 y_pred_test = y_pred_test.to(device)
                 # save predicted node feature for analysis            
                 test_loss = criterion(y_pred_test, Y_test) * (1/time_step/time_step)
-                print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
+                logger.info("Epoch: %d Train: %.5f Test: %.5f", i, train_loss.item(), test_loss.item())
+                # print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
                 ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
 
                 if loss_type == "Jacobian":
                     test_model_J = compute_batch_jac(0, X_test).to(device)
                     test_jac_norm_diff = criterion(Test_J, test_model_J)
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
-                    JAC_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/JAC_'+str(i)+'.jpg'
+                    JAC_plot_path = f'{args.train_dir}JAC_'+str(i)+'.jpg'
+                    # JAC_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/JAC_'+str(i)+'.jpg'
                     plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
 
                 k = k + 1
@@ -310,10 +372,16 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         for i in [0, 1, 50, -2, -1]:
             print("Point:", X[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
     else:
-        MSE_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/MSE_'+str(i)+'.jpg'
+        MSE_plot_path = f'{args.train_dir}MSE_'+str(i)+'.jpg'
+        # MSE_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/MSE_'+str(i)+'.jpg'
         plot_vector_field(model, path=MSE_plot_path, idx=1, t=0., N=100, device='cuda')
         jac_diff_train, jac_diff_test = None, None
-
+    # Load the best relative error model
+    best_model = model
+    best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model.pth"))
+    best_model.eval()
+    RE_plot_path = f'{args.train_dir}minRE.jpg'
+    plot_vector_field(best_model, path=RE_plot_path, idx=1, t=0., N=100, device='cuda')
     return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test
 
 
@@ -489,20 +557,23 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=2000)
-    parser.add_argument("--num_train", type=int, default=8000)
+    parser.add_argument("--num_epoch", type=int, default=6000)
+    parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=6000)
-    parser.add_argument("--num_trans", type=int, default=0)
+    parser.add_argument("--num_trans", type=int, default=1000)
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
-    parser.add_argument("--model_type", default="MLP", choices=["MLP", "CNN", "HigherDimCNN", "GRU"])
+    parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
-    parser.add_argument("--n_layers", type=int, default=2)
-    parser.add_argument("--reg_param", type=float, default=800)
+    parser.add_argument("--n_layers", type=int, default=4)
+    parser.add_argument("--reg_param", type=float, default=3000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
+    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_Jac/")
 
     # Initialize Settings
     args = parser.parse_args()
+    if not os.path.exists(args.train_dir):
+        os.makedirs(args.train_dir)
     dim = 3
     dyn_sys_func = lorenz if args.dyn_sys == "lorenz" else rossler
     dyn_sys_info = [dyn_sys_func, dim, args.time_step]
@@ -522,6 +593,8 @@ if __name__ == '__main__':
     # Create model
     if args.model_type == "MLP":
         m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
+    elif args.model_type == "MLP_skip":
+        m = ODE_MLP_skip(y_dim=dim, n_hidden=args.n_hidden).to(device)
     elif args.model_type == "CNN":
         m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
     elif args.model_type == "HigherDimCNN":
