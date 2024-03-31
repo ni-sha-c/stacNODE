@@ -321,8 +321,6 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         if i % (epochs//n_store) == 0 or (i == epochs-1):
             with torch.no_grad():
                 model.eval()
-
-
                 current_relative_error = calculate_relative_error(model, dyn_sys, device)
                 # Check if current model has the lowest relative error so far
                 if current_relative_error < min_relative_error:
@@ -345,7 +343,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
                     JAC_plot_path = f'{args.train_dir}JAC_'+str(i)+'.jpg'
                     # JAC_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/JAC_'+str(i)+'.jpg'
-                    plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
+                    # plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
 
                 k = k + 1
 
@@ -451,7 +449,7 @@ def plot_vf_err(model, dyn_info, model_type, loss_type, vf_err_path):
     ax.set_xlabel("time",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
-    ax.set_ylim(0, 20)
+    ax.set_ylim(0, int(max(percentage_err)))
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
@@ -532,11 +530,12 @@ if __name__ == '__main__':
     print("device: ", device)
 
     # grid search
-    modelchoices = ['MLP','MLP_skip']
+    modelchoices = ['MLP_skip']
     epochchoices = [8000, 10000]
     transchoices = [0, 500, 1000]
     hiddenchoices = [256, 512, 1024]
     layerchoices = [3, 5, 7]
+    regpchoices = [100, 500, 1000]
     combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices))
 
     parser = argparse.ArgumentParser()
@@ -547,14 +546,14 @@ if __name__ == '__main__':
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=1000)
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
+    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--reg_param", type=float, default=3000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_MSE/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/"])
+    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_Jac/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/"])
 
     # Initialize Settings
     args = parser.parse_args()
@@ -574,7 +573,7 @@ if __name__ == '__main__':
         args.n_hidden = combination[3]
         args.n_layers = combination[4]
 
-        combination_str = f"Comb{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
+        combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
         print(combination_str)
 
         # Save initial settings
@@ -622,13 +621,16 @@ if __name__ == '__main__':
             plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
 
         # Plot vector field & phase space
-        percentage_err = plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
-        plot_attractor(m, dyn_sys_info, 50, phase_path)
+        best_model = m
+        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model.pth"))
+        best_model.eval()
+        percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
+        plot_attractor(best_model, dyn_sys_info, 50, phase_path)
 
         # compute LE
         true_traj = torchdiffeq.odeint(dyn_sys_func, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
         print("Computing LEs of NN...")
-        learned_LE = lyap_exps([m, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
+        learned_LE = lyap_exps([best_model, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
         print("Computing true LEs...")
         True_LE = lyap_exps(dyn_sys_info, true_traj, 30000).detach().cpu().numpy()
         loss_hist, test_loss_hist, jac_train_hist, jac_test_hist
