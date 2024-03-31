@@ -69,19 +69,14 @@ class ODE_MLP_skip(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(y_dim, n_hidden),
             nn.ReLU(),
- 
             nn.Linear(n_hidden, n_hidden),
             nn.ReLU(),
- 
             nn.Linear(n_hidden, n_hidden),
             nn.ReLU(),
- 
             nn.Linear(n_hidden, n_hidden),
             nn.ReLU(),
- 
             nn.Linear(n_hidden, n_hidden),
             nn.ReLU(),
- 
         )
         self.skip = nn.Sequential(
             nn.Linear(y_dim, n_hidden),
@@ -316,9 +311,6 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         y_pred = torchdiffeq.odeint(model, X, t_eval_point, method="rk4")[-1]
         y_pred = y_pred.to(device)
         optimizer.zero_grad()
-        # print('++++++++++++')
-        # print("y_pred", y_pred.shape)
-        # print("Y", Y.shape)
         train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
@@ -327,10 +319,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
             compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
             cur_model_J = compute_batch_jac(0, X).to(device)
             jac_norm_diff = criterion(True_J, cur_model_J)
-        
-            # covariance_diff = criterion(torch.cov(Y.T), torch.cov(y_pred.T))
             train_loss += reg_param*jac_norm_diff
-            # train_loss += 800 * covariance_diff
 
         train_loss.backward()
         optimizer.step()
