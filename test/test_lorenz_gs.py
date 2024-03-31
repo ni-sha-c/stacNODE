@@ -431,11 +431,11 @@ def plot_vf_err(model, dyn_info, model_type, loss_type, vf_err_path):
     vf = torch.zeros(len_o, dim)
     for i in range(len_o):
         vf[i] = dyn(0,orbit[i])
-    vf_nn, vf = vf_nn.T, vf.T # (3, 400)
+    # vf_nn, vf = vf_nn.T, vf.T # (3, 400)
     ax = figure().add_subplot()
     vf_nn, vf = vf_nn.numpy(), vf.numpy()
-    mag = np.linalg.norm(vf, axis=0)
-    err = np.linalg.norm(vf_nn - vf, axis=0)
+    mag = np.linalg.norm(vf, axis=1)
+    err = np.linalg.norm(vf_nn - vf, axis=1)
     t = time_step*np.arange(0, len_o)
     percentage_err = err/mag*100
 
@@ -449,7 +449,7 @@ def plot_vf_err(model, dyn_info, model_type, loss_type, vf_err_path):
     ax.set_xlabel("time",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
-    ax.set_ylim(0, int(max(percentage_err)))
+    ax.set_ylim(0, int(max(percentage_err) + 1))
     ax.legend(fontsize=24)
     ax.grid(True)
     tight_layout()
@@ -535,7 +535,8 @@ if __name__ == '__main__':
     transchoices = [0, 500, 1000]
     hiddenchoices = [256, 512, 1024]
     layerchoices = [3, 5, 7]
-    regpchoices = [100, 500, 1000]
+    # regpchoices = [100, 500, 1000]
+    # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
     combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices))
 
     parser = argparse.ArgumentParser()
@@ -546,14 +547,14 @@ if __name__ == '__main__':
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=1000)
-    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
+    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--reg_param", type=float, default=3000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_Jac/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/"])
+    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_MSE/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/"])
 
     # Initialize Settings
     args = parser.parse_args()
@@ -572,7 +573,9 @@ if __name__ == '__main__':
         args.num_trans = combination[2]
         args.n_hidden = combination[3]
         args.n_layers = combination[4]
+        # args.reg_param = combination[5]
 
+        # combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}_{args.reg_param}"
         combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
         print(combination_str)
 
@@ -615,10 +618,10 @@ if __name__ == '__main__':
         true_plot_path_2 = f"../plot/Vector_field/True_{args.dyn_sys}_2.png"
         phase_path = f"../plot/Phase_plot/{args.dyn_sys}_{args.model_type}_{args.loss_type}.png"
 
-        plot_loss(epochs, loss_hist, test_loss_hist, loss_path) 
-        if args.loss_type == "Jacobian":
-            plot_loss(epochs, jac_train_hist, jac_test_hist, jac_loss_path) 
-            plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
+        # plot_loss(epochs, loss_hist, test_loss_hist, loss_path) 
+        # if args.loss_type == "Jacobian":
+            # plot_loss(epochs, jac_train_hist, jac_test_hist, jac_loss_path) 
+            # plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
 
         # Plot vector field & phase space
         best_model = m
