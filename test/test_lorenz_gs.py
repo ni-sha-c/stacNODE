@@ -530,23 +530,24 @@ if __name__ == '__main__':
     print("device: ", device)
 
     # grid search
-    modelchoices = ['MLP_skip']
-    epochchoices = [10000]#[8000, 10000]
-    transchoices = [1000]#[0, 500, 1000]
+    modelchoices = ['MLP_skip']#['MLP','MLP_skip']
     hiddenchoices = [256, 512, 1024]
     layerchoices = [3, 5, 7]
-    regpchoices = [100, 500, 1000]
-    combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
-    # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices))
+    batchchoices = [1000, 2000]
+    weightdecay = [1e-3, 1e-4]
+    # regpchoices = [100, 500, 1000]
+    # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
+    combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, weightdecay))
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=6000)
+    parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=6000)
     parser.add_argument("--num_trans", type=int, default=1000)
+    parser.add_argument("--batch_size", type=int, default=1000)
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
@@ -554,7 +555,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--reg_param", type=float, default=3000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_Jac/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/"])
+    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_MSE_new/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/", "../plot/Vector_field/train_MLPskip_MSE_new/", "../plot/Vector_field/train_MLP_MSE_new/"])
 
     # Initialize Settings
     args = parser.parse_args()
@@ -569,13 +570,12 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     for index, combination in enumerate(combinations):
         args.model_type = combination[0]
-        args.num_epoch = combination[1]
-        args.num_trans = combination[2]
-        args.n_hidden = combination[3]
-        args.n_layers = combination[4]
-        args.reg_param = combination[5]
+        args.n_hidden = combination[1]
+        args.n_layers = combination[2]
+        args.batch_size = combination[3]
+        args.weight_decay = combination[4]
 
-        combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}_{args.reg_param}"
+        combination_str = f"2nd_{args.loss_type}: {args.model_type}_{args.n_hidden}_{args.n_layers}_{args.batch_size}_{args.weight_decay}"
         # combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
         print(combination_str)
 
@@ -607,7 +607,7 @@ if __name__ == '__main__':
             m = ODE_GRU(n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
 
         print("Training...") # Train the model, return node
-        epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type, combination_str)
+        epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type, args.batch_size, combination_str)
 
         # Plot Loss
         loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Total_{start_time}.png"
