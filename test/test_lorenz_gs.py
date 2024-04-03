@@ -273,7 +273,7 @@ def update_lr(optimizer, epoch, total_e, origin_lr):
         params['lr'] = new_lr
     return
 
-def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type, model_type, plot_path):
+def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type, model_type, batch_size, plot_path):
 
     # Initialize
     n_store, k  = 100, 0
@@ -300,22 +300,42 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     min_relative_error = 1000000
     for i in range(epochs):
         model.train()
-        y_pred = torchdiffeq.odeint(model, X, t_eval_point, method="rk4")[-1]
-        y_pred = y_pred.to(device)
-        optimizer.zero_grad()
-        train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
+
+        ## Mini-batch for MSE only ##
+        if batch_size != None:
+            y_pred = torch.zeros(int(num_train/batch_size), batch_size, dim)
+            y_true = torch.zeros(int(num_train/batch_size), batch_size, dim)
+
+            batch_idx = 0
+            for batch_start in range(0, num_train, batch_size):
+                batch_end = min(batch_start + batch_size, num_train)
+                # print("batch_start: ", batch_start, batch_end)
+                X_batch = X[batch_start:batch_end]
+                Y_batch = Y[batch_start:batch_end]
+                y_pred[batch_idx] = torchdiffeq.odeint(model, X_batch, t_eval_point, method="rk4")[-1].to(device)
+                y_true[batch_idx]  = Y_batch
+                batch_idx += 1
+            
+            optimizer.zero_grad()
+            train_loss = criterion(y_pred, y_true) * (1 / time_step / time_step)
+        ## Full-batch ##
+        else:
+            y_pred = torchdiffeq.odeint(model, X, t_eval_point, method="rk4")[-1].to(device)
+
+            optimizer.zero_grad()
+            train_loss = criterion(y_pred, Y) * (1 / time_step / time_step)
 
         if loss_type == "Jacobian":
-            # Compute Jacobian
+            # Compute Jacobian (only for Full-batch)
             jacrev = torch.func.jacrev(model, argnums=1)
             compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
-            cur_model_J = compute_batch_jac(0, X).to(device)
-            jac_norm_diff = criterion(True_J, cur_model_J)
-            train_loss += reg_param*jac_norm_diff
+            cur_model_J = compute_batch_jac(0, X_batch).to(device)
+            jac_norm_diff = criterion(True_J[batch_start:batch_end], cur_model_J)
+            train_loss += reg_param * jac_norm_diff
 
         train_loss.backward()
         optimizer.step()
-        update_lr(optimizer, i, epochs, args.lr)
+        update_lr(optimizer, i, epochs, lr)
 
         # Save Training and Test History
         if i % (epochs//n_store) == 0 or (i == epochs-1):
@@ -326,7 +346,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 if current_relative_error < min_relative_error:
                     min_relative_error = current_relative_error
                     # Save the model
-                    torch.save(model.state_dict(), f"{args.train_dir}/best_model.pth")
+                    torch.save(model.state_dict(), f"{args.train_dir}/best_model_mb.pth")
                     logger.info(f"Epoch {i}: New minimal relative error: {min_relative_error:.2f}%, model saved.")
 
                 y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
@@ -357,7 +377,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         jac_diff_train, jac_diff_test = None, None
     # Load the best relative error model
     best_model = model
-    best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model.pth"))
+    best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
     best_model.eval()
     RE_plot_path = f'{args.train_dir}minRE_'+plot_path+'.jpg'
     plot_vector_field(best_model, path=RE_plot_path, idx=1, t=0., N=100, device='cuda')
@@ -530,11 +550,11 @@ if __name__ == '__main__':
     print("device: ", device)
 
     # grid search
-    modelchoices = ['MLP_skip']#['MLP','MLP_skip']
-    hiddenchoices = [256, 512, 1024]
-    layerchoices = [3, 5, 7]
-    batchchoices = [1000, 2000]
-    weightdecay = [1e-3, 1e-4]
+    modelchoices = ['MLP']#['MLP','MLP_skip']
+    hiddenchoices = [1024]#[256, 512, 1024]
+    layerchoices = [7]#[3, 5, 7]
+    batchchoices = [2000]#[1000, 2000]
+    weightdecay = [1e-4]#1[1e-3, 1e-4]
     # regpchoices = [100, 500, 1000]
     # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
     combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, weightdecay))
@@ -545,10 +565,10 @@ if __name__ == '__main__':
     parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=6000)
+    parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_trans", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=1000)
-    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
+    parser.add_argument("--batch_size", type=int, default=1000, choices=[1000, 2000, None])
+    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
@@ -625,7 +645,7 @@ if __name__ == '__main__':
 
         # Plot vector field & phase space
         best_model = m
-        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model.pth"))
+        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
         best_model.eval()
         percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
         plot_attractor(best_model, dyn_sys_info, 50, phase_path)
