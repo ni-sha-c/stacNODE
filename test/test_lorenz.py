@@ -64,20 +64,12 @@ class ODE_MLP(nn.Module):
     
 
 class ODE_MLP_skip(nn.Module):
-    def __init__(self, y_dim=3, n_hidden=512):
+    def __init__(self, y_dim=3, n_hidden=512, n_layers=5):
         super(ODE_MLP_skip, self).__init__()
-        self.net = nn.Sequential(
-            nn.Linear(y_dim, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.ReLU(),
-        )
+        layers = [nn.Linear(y_dim, n_hidden), nn.ReLU()]
+        for _ in range(n_layers - 1):
+            layers.extend([nn.Linear(n_hidden, n_hidden), nn.ReLU()])
+        self.net = nn.Sequential(*layers)
         self.skip = nn.Sequential(
             nn.Linear(y_dim, n_hidden),
             nn.ReLU(),
@@ -287,8 +279,8 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     n_store, k  = 100, 0
     ep_num, loss_hist, test_loss_hist = torch.empty(n_store+1,dtype=int), torch.empty(n_store+1), torch.empty(n_store+1)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    X, Y, X_test, Y_test = dataset
-    X, Y, X_test, Y_test = X.to(device), Y.to(device), X_test.to(device), Y_test.to(device)
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = dataset
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = X_train.to(device), Y_train.to(device), X_val.to(device), Y_val.to(device), X_test.to(device), Y_test.to(device)
     num_train = X.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
     dyn_sys_type = "lorenz" if dyn_sys == lorenz else "rossler"
@@ -301,23 +293,23 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         print("Jacobian loss!")
         f = lambda x: dyn_sys(0, x)
         true_jac_fn = torch.vmap(torch.func.jacrev(f))
-        True_J = true_jac_fn(X)
+        True_J = true_jac_fn(X_train)
         Test_J = true_jac_fn(X_test)
 
     # Training Loop
     min_relative_error = 1000000
     for i in range(epochs):
         model.train()
-        y_pred = torchdiffeq.odeint(model, X, t_eval_point, method="rk4")[-1]
+        y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, method="rk4")[-1]
         y_pred = y_pred.to(device)
         optimizer.zero_grad()
-        train_loss = criterion(y_pred, Y)  * (1/time_step/time_step)
+        train_loss = criterion(y_pred, Y_train)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
             # Compute Jacobian
             jacrev = torch.func.jacrev(model, argnums=1)
             compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
-            cur_model_J = compute_batch_jac(0, X).to(device)
+            cur_model_J = compute_batch_jac(0, X_train).to(device)
             jac_norm_diff = criterion(True_J, cur_model_J)
             train_loss += reg_param*jac_norm_diff
 
@@ -338,7 +330,8 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     # Save the model
                     torch.save(model.state_dict(), f"{args.train_dir}/best_model.pth")
                     logger.info(f"Epoch {i}: New minimal relative error: {min_relative_error:.2f}%, model saved.")
-
+                y_pred_val = torchdiffeq.odeint(model, X_val, t_eval_point, method="rk4")[-1]
+                val_loss = criterion(y_pred_val, Y_val) * (1 / time_step / time_step)
                 y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
                 y_pred_test = y_pred_test.to(device)
                 # save predicted node feature for analysis            
@@ -371,7 +364,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     best_model.eval()
     RE_plot_path = f'{args.train_dir}minRE.jpg'
     plot_vector_field(best_model, path=RE_plot_path, idx=1, t=0., N=100, device='cuda')
-    return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test
+    return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test, Y_test
 
 
 
@@ -434,7 +427,7 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     dyn_sys_type = "lorenz" if dyn == lorenz else "rossler"
 
     orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
-    orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 4, time_step), method='rk4', rtol=1e-8)
+    orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 20, time_step), method='rk4', rtol=1e-8)
     len_o = orbit.shape[0]
 
     vf_nn = model(0, orbit.to('cuda')).detach().cpu()
@@ -458,6 +451,7 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     print(percentage_err)
     
     ax.plot(t, percentage_err, "o", label=r"$\frac{\|\hat x - x\|_2}{\|x\|_2}$", ms=3.0)
+    np.savetxt(f'{args.train_dir}{args.loss_type}error_attractor.txt', np.column_stack((t, err/mag*100)), fmt='%.6f')
     ax.set_xlabel("time",fontsize=24)
     ax.xaxis.set_tick_params(labelsize=24)
     ax.yaxis.set_tick_params(labelsize=24)
@@ -469,6 +463,40 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     savefig(path)
     return percentage_err
 
+def plot_vf_err_test(model, y_pred_train, dyn_info, model_type, loss_type):
+    dyn, dim, time_step = dyn_info
+    dyn_sys_type = "lorenz" if dyn == lorenz else "rossler"
+    # orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
+    # orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 4, time_step), method='rk4', rtol=1e-8)
+    orbit = y_pred_train
+    len_o = orbit.shape[0]
+    orbit_gpu = orbit.to('cuda')
+    vf_nn = model(0, orbit_gpu).detach().cpu()
+    vf = torch.zeros(len_o, dim)
+    # for i in range(len_o):
+    true_vf = lambda x: dyn(0,x)
+    vf = torch.vmap(true_vf)(orbit_gpu).detach().cpu()
+    vf_nn, vf = vf_nn.T, vf.T
+    ax = figure().add_subplot()
+    vf_nn, vf = vf_nn.numpy(), vf.numpy()
+    mag = np.linalg.norm(vf, axis=0)
+    # stop
+    # mag = abs(vf[2])
+    err = np.linalg.norm(vf_nn - vf, axis=0)
+    # err = abs(vf_nn[2]-vf[2])
+    t = time_step*np.arange(0, len_o)
+    ax.plot(t, err/mag*100, "o", label=r"$\|Error\|_2$", ms=3.0)
+    np.savetxt(f'{args.train_dir}{args.loss_type}error_test.txt', np.column_stack((t, err/mag*100)), fmt='%.6f')
+    ax.set_xlabel("time",fontsize=24)
+    ax.xaxis.set_tick_params(labelsize=24)
+    ax.yaxis.set_tick_params(labelsize=24)
+    ax.set_ylim(0, 2)
+    ax.legend(fontsize=24)
+    ax.grid(True)
+    tight_layout()
+
+    path = f"{args.train_dir}MSE_error_Ytest.png"
+    savefig(path)
 
 def plot_vector_field(model, path, idx, t, N, device='cuda'):
     # Credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
@@ -545,17 +573,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=6000)
+    parser.add_argument("--weight_decay", type=float, default=1e-5)
+    parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=6000)
-    parser.add_argument("--num_trans", type=int, default=1000)
+    parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
-    parser.add_argument("--n_hidden", type=int, default=512)
-    parser.add_argument("--n_layers", type=int, default=4)
-    parser.add_argument("--reg_param", type=float, default=3000)
+    parser.add_argument("--n_hidden", type=int, default=256)
+    parser.add_argument("--n_layers", type=int, default=3)
+    parser.add_argument("--reg_param", type=float, default=500)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
     parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_Jac/")
 
@@ -610,6 +638,7 @@ if __name__ == '__main__':
 
     # Plot vector field & phase space
     percentage_err = plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
+    plot_vf_err_test(m, Y_test, dyn_sys_info, args.model_type, args.loss_type)
     plot_vector_field(dyn_sys_func, path=true_plot_path_1, idx=1, t=0., N=100, device='cuda')
     plot_vector_field(dyn_sys_func, path=true_plot_path_2, idx=2, t=0., N=100, device='cuda')
     plot_attractor(m, dyn_sys_info, 50, phase_path)
