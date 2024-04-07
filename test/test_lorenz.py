@@ -363,7 +363,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
 
     if loss_type == "Jacobian":
         for i in [0, 1, 50, -2, -1]:
-            print("Point:", X[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
+            print("Point:", X_train[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
     else:
         MSE_plot_path = f'{args.train_dir}MSE_'+str(i)+'.jpg'
         # MSE_plot_path = f'../plot/Vector_field/train_{model_type}_{dyn_sys_type}/MSE_'+str(i)+'.jpg'
@@ -477,8 +477,6 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
 def plot_vf_err_test(model, y_pred_train, dyn_info, model_type, loss_type):
     dyn, dim, time_step = dyn_info
     dyn_sys_type = "lorenz" if dyn == lorenz else "rossler"
-    # orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
-    # orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 4, time_step), method='rk4', rtol=1e-8)
     orbit = y_pred_train
     len_o = orbit.shape[0]
     orbit_gpu = orbit.to('cuda')
@@ -491,7 +489,6 @@ def plot_vf_err_test(model, y_pred_train, dyn_info, model_type, loss_type):
     ax = figure().add_subplot()
     vf_nn, vf = vf_nn.numpy(), vf.numpy()
     mag = np.linalg.norm(vf, axis=0)
-    # stop
     # mag = abs(vf[2])
     err = np.linalg.norm(vf_nn - vf, axis=0)
     # err = abs(vf_nn[2]-vf[2])
@@ -632,7 +629,7 @@ if __name__ == '__main__':
         m = ODE_GRU(n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
 
     print("Training...") # Train the model, return node
-    epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type)
+    epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist, Y_test = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type)
 
     # Plot Loss
     loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Total_{start_time}.png"
