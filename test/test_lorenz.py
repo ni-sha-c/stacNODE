@@ -236,20 +236,31 @@ class ODE_GRU(nn.Module):
 ## Training ##
 ##############
 
-def create_data(dyn_info, n_train, n_test, n_trans):
+def create_data(dyn_info, n_train, n_test, n_val, n_trans):
     dyn, dim, time_step = dyn_info
-    tot_time = time_step*(n_train+n_test+n_trans+1) 
-    t_eval_point = torch.arange(0,tot_time,time_step)
-    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='rk4', rtol=1e-8) 
-    traj = traj[n_trans:]
-    ##### create training dataset #####
-    X = traj[:n_train]
-    Y = traj[1:n_train+1]
-    ##### create test dataset #####
+    # Adjust total time to account for the validation set
+    tot_time = time_step * (n_train + n_test + n_val + n_trans + 1)
+    t_eval_point = torch.arange(0, tot_time, time_step)
+
+    # Generate trajectory using the dynamical system
+    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='rk4', rtol=1e-8)
+    traj = traj[n_trans:]  # Discard transient part
+
+    # Create training dataset
+    X_train = traj[:n_train]
+    Y_train = traj[1:n_train + 1]
+
+    # Shift trajectory for validation dataset
     traj = traj[n_train:]
+    X_val = traj[:n_val]
+    Y_val = traj[1:n_val + 1]
+
+    # Shift trajectory for test dataset
+    traj = traj[n_val:]
     X_test = traj[:n_test]
-    Y_test = traj[1:n_test+1]
-    return [X, Y, X_test, Y_test]
+    Y_test = traj[1:n_test + 1]
+
+    return [X_train, Y_train, X_val, Y_val, X_test, Y_test]
 
 def calculate_relative_error(model, dyn, device):
     # Simulate an orbit using the true dynamics
@@ -281,7 +292,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     X_train, Y_train, X_val, Y_val, X_test, Y_test = dataset
     X_train, Y_train, X_val, Y_val, X_test, Y_test = X_train.to(device), Y_train.to(device), X_val.to(device), Y_val.to(device), X_test.to(device), Y_test.to(device)
-    num_train = X.shape[0]
+    num_train = X_train.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
     dyn_sys_type = "lorenz" if dyn_sys == lorenz else "rossler"
     t_eval_point = torch.linspace(0, time_step, 2).to(device)
@@ -576,7 +587,8 @@ if __name__ == '__main__':
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=6000)
+    parser.add_argument("--num_test", type=int, default=3000)
+    parser.add_argument("--num_val", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
@@ -605,7 +617,7 @@ if __name__ == '__main__':
         logger.info("%s: %s", arg, value)
 
     # Create Dataset
-    dataset = create_data(dyn_sys_info, n_train=args.num_train, n_test=args.num_test, n_trans=args.num_trans)
+    dataset = create_data(dyn_sys_info, n_train=args.num_train, n_test=args.num_test, n_trans=args.num_trans, n_val=args.num_val)
 
     # Create model
     if args.model_type == "MLP":
