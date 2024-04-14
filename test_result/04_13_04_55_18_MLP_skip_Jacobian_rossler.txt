@@ -1,0 +1,34 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 1e-05
+num_epoch: 100
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: rossler
+model_type: MLP_skip
+n_hidden: 256
+n_layers: 5
+reg_param: 500
+optim_name: AdamW
+train_dir: ../plot/Vector_field/rossler/train_MLPskip_Jac_fullbatch/
+Epoch 0: New minimal relative error: 109.19%, model saved.
+Epoch: 0 Train: 3490.71826 Test: 54.32688
+Epoch: 1 Train: 3430.41309 Test: 52.44055
+Epoch: 2 Train: 3367.20483 Test: 50.61297
+Epoch 3: New minimal relative error: 88.63%, model saved.
+Epoch: 3 Train: 3295.99902 Test: 48.81506
+Epoch 4: New minimal relative error: 87.97%, model saved.
+Epoch: 4 Train: 3209.70825 Test: 47.04490
+Epoch 5: New minimal relative error: 84.17%, model saved.
+Epoch: 5 Train: 3107.28833 Test: 45.30179
+Epoch: 6 Train: 2986.07080 Test: 43.60056
+Epoch: 7 Train: 2838.07275 Test: 41.98843
+Epoch 8: New minimal relative error: 78.78%, model saved.
+Epoch: 8 Train: 2665.83887 Test: 40.59502
+Epoch 9: New minimal relative error: 72.51%, model saved.
+Epoch: 9 Train: 2463.32935 Test: 39.62671
+Epoch 10: New minimal relative error: 66.15%, model saved.
+Epoch: 10 Train: 2228.39185 Test: 39.43089

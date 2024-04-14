@@ -146,10 +146,6 @@ def create_NODE(device, dyn_sys, n_nodes, n_hidden, T):
                   'hyperchaos_hu': ODE_hyperchaos_hu}
     ODEFunc = DYNSYS_NN_MAP[dyn_sys]
     neural_func = ODEFunc(y_dim=n_nodes, n_hidden=n_hidden).to(device)
-    # node = ODEBlock(T=T, odefunc=neural_func, method='rk4', atol=1e-9, rtol=1e-9, adjoint=False).to(device)
-
-    # m = nn.Sequential(
-    #     node).to(device)
     return neural_func
 
 def vectorized_simulate(model, X, t_eval_point, len_T, device):
