@@ -2,12 +2,14 @@ import torch
 from matplotlib.pyplot import *
 
 # # Tilted Tentmap, 0.5
-def tilted_tent_map(x, s=0.):
+def tilted_tent_map(x, s=0.2):
     s = torch.tensor(s, dtype=torch.float64).to('cuda')
-    x = x.to(torch.float64).to('cuda') 
-    noise = 1e-12*torch.randn(1).to('cuda')
+    # x = x.to(torch.float64).to('cuda')
+    # x = torch.tensor(x.clone().detach()).cuda()
+    x = x.to('cuda')
 
     if s == 0.:
+        noise = 1e-12*torch.randn(1).to('cuda')
         if x < 1+s:
             return 2/(1+s)*x + noise
         else:
