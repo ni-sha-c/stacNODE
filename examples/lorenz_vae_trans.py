@@ -56,7 +56,7 @@ class LatentODE(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, 2 * latent_size)
+            nn.Linear(hidden_size, hidden_size)
         )
         self.hidden_to_latent = nn.Linear(hidden_size, 2 * latent_size)
         self.latent_to_hidden = nn.Sequential(
@@ -73,13 +73,25 @@ class LatentODE(nn.Module):
         ts_expanded = ts.unsqueeze(-1) #.expand(-1, -1, data_size)
         # print('ysshape', ys.size())
         latent_params = self.encoder(ys[:,0,:]) #encode
-        mean, logstd = torch.chunk(latent_params, 2, dim=-1)
+        # print('latentparams',latent_params.shape)   
+        context = self.hidden_to_latent(latent_params)
+        # print('context',context.shape)
+        mean, logstd = context[:,: self.latent_size], context[:,self.latent_size :]
+
+        # print('std',logstd.shape)
+        # mean, logstd = torch.chunk(latent_params, 2, dim=-1)
 
         std = torch.exp(logstd)
         eps = torch.randn_like(std)
+
+        # print('mean',mean.shape, 'epsstd',(eps*std).shape)
         latent = mean + eps * std
+        # print('latent',latent.shape) 
 
         y0 = self.latent_to_hidden(latent)
+        # print('latentth',y0.shape) 
+
+
         sol = odeint(self.func, y0, ts[0,:])  
         # print('shapesol', sol.shape)
         sol=sol.transpose(0, 1)
@@ -150,25 +162,32 @@ def train(model, dataloader, optimizer, num_epochs=3):
                 average_loss = total_loss / len(dataloader)
                 print(f"Epoch {epoch}: Average Loss {average_loss}")
                 
-                sample_ts = torch.linspace(0, 12, 30)
-                # batch_ts, batch_ys = next(iter(dataloader))  # Use the first batch for plotting
-                # print('shapes',sample_ts.shape, batch_ys[:1].squeeze(0).shape)
 
-                sample_ts = sample_ts.to(device)
-                sample_ys = model.sample(sample_ts)
+                dyn_sys_func = lorenz 
+                dyn_sys_info = [dyn_sys_func, data_size, time_step]
+                phase_path = f"./latentode/attractor-{epoch}.png"
+                plot_attractor(model, dyn_sys_info, 50, phase_path)
+                
+                
+                # sample_ts = torch.linspace(0, 12, 30)
+                # # batch_ts, batch_ys = next(iter(dataloader))  # Use the first batch for plotting
+                # # print('shapes',sample_ts.shape, batch_ys[:1].squeeze(0).shape)
 
-                fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-                sample_y_np = sample_ys.detach().cpu().numpy()
-                # print('shapesampley',sample_y_np.shape)
-                sample_t_np = sample_ts.detach().cpu().numpy()
-                # print('shapesamplet',sample_t_np.shape)
+                # sample_ts = sample_ts.to(device)
+                # sample_ys = model.sample(sample_ts)
 
-                ax.plot(sample_t_np, sample_y_np[:, 0])
-                ax.plot(sample_t_np, sample_y_np[:, 1])
-                ax.plot(sample_t_np, sample_y_np[:, 2])
-                ax.set_xlabel("t")
-                plt.savefig(f"./latent3d_ode_{epoch}.png")
-                plt.close(fig)
+                # fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+                # sample_y_np = sample_ys.detach().cpu().numpy()
+                # # print('shapesampley',sample_y_np.shape)
+                # sample_t_np = sample_ts.detach().cpu().numpy()
+                # # print('shapesamplet',sample_t_np.shape)
+
+                # ax.plot(sample_t_np, sample_y_np[:, 0])
+                # ax.plot(sample_t_np, sample_y_np[:, 1])
+                # ax.plot(sample_t_np, sample_y_np[:, 2])
+                # ax.set_xlabel("t")
+                # plt.savefig(f"./latentode/latent3d_ode_{epoch}.png")
+                # plt.close(fig)
 
 
 
@@ -179,7 +198,7 @@ def train(model, dataloader, optimizer, num_epochs=3):
 
 def get_data(dataset_size, total_time=10, time_steps=1000):
     # Path to save or load the data
-    data_path = './ode_datasetnew.pth'
+    data_path = './latentode/ode_dataset256.pth'
 
     # Check if data already exists
     if os.path.exists(data_path):
@@ -261,7 +280,9 @@ def lorenz(t, u, params=[10.0,28.0,8/3]):
 
 def transformed_vector_field(model, x):
     # Transform x from data to hidden space, apply the vector field, and transform back to data space.
+    # print('xshape',x.shape) #3
     h = model.encoder(x) 
+    # print('hshape',h.shape) #=128
     v_h = model.func(0, h)  
     J_g = model.hidden_to_data.weight  
     v_d = torch.matmul(v_h, J_g.T) + model.hidden_to_data.bias  
@@ -344,24 +365,25 @@ def plot_attractor(model, dyn_info, time, path):
 
 time_step = 0.01
 data_size = 3  
-hidden_size = 20
-latent_size = 10
+hidden_size = 64
+latent_size = 64
 model = LatentODE(data_size, hidden_size, latent_size).to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 dim = data_size
 print('preparing data..')
-dataset_size = 100
+dataset_size = 512
 
 batch_size = 32
-nn_sys_func = model
-nn_sys_info = [nn_sys_func, data_size, time_step]
-dyn_sys_func = lorenz 
-dyn_sys_info = [dyn_sys_func, data_size, time_step]
+
 ts, ys = get_data(dataset_size)
 
 dataloader = create_dataloader(ts, ys, batch_size)
 train(model, dataloader, optimizer, num_epochs=1000)
 
+nn_sys_func = model
+nn_sys_info = [nn_sys_func, data_size, time_step]
+dyn_sys_func = lorenz 
+dyn_sys_info = [dyn_sys_func, data_size, time_step]
 true_traj = odeint(dyn_sys_func, torch.randn(dim), torch.arange(0, 300, time_step), method='rk4', rtol=1e-8)
 print("Computing true LEs...")
 True_LE = lyap_exps(dyn_sys_info, true_traj, 3000).detach().cpu().numpy()
