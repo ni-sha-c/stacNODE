@@ -1,0 +1,20 @@
+time_step: 0.001
+lr: 0.001
+weight_decay: 0.0001
+num_epoch: 20000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: hyperchaos
+model_type: MLP_skip
+n_hidden: 256
+n_layers: 4
+reg_param: 1000
+optim_name: AdamW
+train_dir: ../plot/Vector_field/hyperchaos/train_MLPskip_Jac_fullbatch/
+Epoch: 0 Train: 6794471.50000 Test: 4234217.00000
+Epoch: 200 Train: 963225.31250 Test: 804160.37500
+Epoch 400: New minimal relative error: 53.88%, model saved.
+Epoch: 400 Train: 916789.25000 Test: 798838.31250

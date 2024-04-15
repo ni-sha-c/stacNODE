@@ -1,0 +1,30 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 0.0001
+num_epoch: 20000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: rossler
+model_type: MLP_skip
+n_hidden: 512
+n_layers: 12
+reg_param: 1000
+optim_name: AdamW
+train_dir: ../plot/Vector_field/rossler/train_MLPskip_Jac_fullbatch/
+Epoch 0: New minimal relative error: 88.20%, model saved.
+Epoch: 0 Train: 6838.35938 Test: 44.58573
+Epoch 200: New minimal relative error: 15.93%, model saved.
+Epoch: 200 Train: 159.83290 Test: 3.53563
+Epoch: 400 Train: 188.04472 Test: 2.50261
+Epoch: 600 Train: 78.53199 Test: 0.79661
+Epoch 800: New minimal relative error: 6.60%, model saved.
+Epoch: 800 Train: 46.53247 Test: 0.21295
+Epoch: 1000 Train: 69.81960 Test: 0.56079
+Epoch: 1200 Train: 56.51568 Test: 1.08265
+Epoch: 1400 Train: 31.77613 Test: 0.24040
+Epoch 1600: New minimal relative error: 4.89%, model saved.
+Epoch: 1600 Train: 33.78490 Test: 0.28776
+Epoch: 1800 Train: 18.02266 Test: 0.13167

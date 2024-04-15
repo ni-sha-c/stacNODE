@@ -1,63 +1,7 @@
-import ctypes
-import itertools
-from matplotlib.pyplot import *
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.gridspec as gridspec
-import multiprocessing
-import numpy as np
-import scipy
-import torch
-from scipy.fft import fft, rfft
-from scipy.integrate import odeint
-from scipy.signal import argrelextrema
-from scipy.signal import correlate
-from scipy.stats import wasserstein_distance
-from test_metrics import *
-import seaborn as sns
-
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 import sys
 sys.path.append('..')
 
-from src.NODE_solve import *
-from src.NODE import *
-from examples.Brusselator import *
-from examples.Lorenz import *
-from examples.Lorenz_periodic import *
-from examples.Sin import *
-from examples.Tilted_tent_map import *
-from examples.Pinched_tent_map import *
-from examples.Plucked_tent_map import *
-
-def vectorized_simulate(model, X, t_eval_point, len_T, device):
-    torch.cuda.empty_cache()
-
-    integrated_model = lambda x: one_step_rk4(model, x, t_eval_point).to(device)
-    compute_batch = torch.func.vmap(integrated_model, in_dims=(0), chunk_size=1000)
-    
-    traj = torch.zeros(len_T, X.shape[0], X.shape[1]) # len_T x num_init x dim
-    traj[0] = X
-    for i in range(1, len_T):
-        print(i)
-        traj[i] = compute_batch(X.double().to(device)).detach() 
-        X = traj[i]
-    return traj
-
-
-def vectorized_simulate_map(model, X, t_eval_point, len_T, device):
-    torch.cuda.empty_cache()
-
-    integrated_model = lambda x: model(x).to(device)
-    compute_batch = torch.func.vmap(integrated_model, in_dims=(0), chunk_size=1000)
-    
-    traj = torch.zeros(len_T, X.shape[0], X.shape[1]) # len_T x num_init x dim
-    traj[0] = X
-    for i in range(1, len_T):
-        print(i)
-        traj[i] = compute_batch(X.double().to(device)).detach() 
-        X = traj[i]
-    return traj
+from src.util import *
 
 
 

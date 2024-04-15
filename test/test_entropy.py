@@ -1,38 +1,8 @@
-import ctypes
-import itertools
-from matplotlib.pyplot import *
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.gridspec as gridspec
-import multiprocessing
-import numpy as np
-import scipy
-import torch
-from scipy.fft import fft, rfft
-from scipy.integrate import odeint
-from scipy.signal import argrelextrema
-from scipy.signal import correlate
-from scipy.stats import wasserstein_distance
-from test_metrics import *
-import seaborn as sns
 import EntropyHub as eh
-from sklearn.feature_selection import mutual_info_regression
-
-
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 import sys
 sys.path.append('..')
 
-from src.NODE_solve import *
-from src.NODE import *
 from src.util import *
-from examples.Brusselator import *
-from examples.Lorenz import *
-from examples.Lorenz_periodic import *
-from examples.Sin import *
-from examples.Tilted_tent_map import *
-from examples.Pinched_tent_map import *
-from examples.Plucked_tent_map import *
 
 
 
