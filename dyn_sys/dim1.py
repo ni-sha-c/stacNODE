@@ -23,8 +23,13 @@ def tilted_tent_map(x, s=0.2):
 # Pinched Tent Map
 def pinched_tent_map(x, s=0.):
     s = torch.tensor(s, dtype=torch.float64)
-    x = x.to(torch.float64) 
-    noise = 1e-12*torch.randn(1)
+    if isinstance(x, torch.Tensor):
+        x = x.cuda()
+    else:
+        x = torch.tensor(x).cuda() 
+
+    if s == 0.:
+        noise = 1e-12*torch.randn(1)
 
     if x < 1:
         return (4*x)/(1 + s + torch.sqrt((1+s)**2 - 4* s* x))

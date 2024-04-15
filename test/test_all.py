@@ -477,10 +477,10 @@ def lyap_exps(dyn_sys_info, s, traj, iters):
     LE = torch.zeros(dim).to(device)
     traj_gpu = traj.to(device)
 
-    if dim == 1:
+    if (dim == 1) or (dim == 2):
         le = 0
         for t in range(traj_gpu.shape[0]):
-            if (model == tilted_tent_map) or (model == plucked_tent_map) or (model == pinched_tent_map):
+            if (model == tilted_tent_map) or (model == plucked_tent_map) or (model == pinched_tent_map) or (model == baker):
                 le += torch.log(abs(F.jacobian(lambda x: model(x, s), traj_gpu[t])))
             else:
                 le += torch.log(abs(F.jacobian(lambda x: model(0, x), traj_gpu[t])))
@@ -512,23 +512,23 @@ if __name__ == '__main__':
     print("device: ", device)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--time_step", type=float, default=1e-2)
+    parser.add_argument("--time_step", type=float, default=1e-3)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=5000)
+    parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_val", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
-    parser.add_argument("--dyn_sys", default="pinched_tent_map", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
+    parser.add_argument("--dyn_sys", default="hyperchaos", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip"])
     parser.add_argument("--s", type=int, default=0.5)
-    parser.add_argument("--n_hidden", type=int, default=128)
+    parser.add_argument("--n_hidden", type=int, default=256)
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--reg_param", type=float, default=1000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/pinched_tent_map/train_MLPskip_MSE_fullbatch/")
+    parser.add_argument("--train_dir", default="../plot/Vector_field/hyperchaos/train_MLPskip_MSE_fullbatch/")
 
     # Initialize Settings
     args = parser.parse_args()
