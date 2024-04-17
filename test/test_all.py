@@ -103,6 +103,8 @@ def create_data(dyn_info, s, n_train, n_test, n_val, n_trans):
     X_test = traj[:n_test]
     Y_test = traj[1:n_test + 1]
 
+    print("created data", torch.max(X_train, axis=0), torch.min(X_train, axis=0))
+
     return [X_train, Y_train, X_val, Y_val, X_test, Y_test]
 
 def calculate_relative_error(model, dyn, dim, device):
@@ -174,6 +176,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     num_train = X_train.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
     ds_name = find_ds_name(dyn_sys)
+    idx = 1 if ds_name == "lorenz" else 2
     t_eval_point = torch.linspace(0, time_step, 2).to(device)
     torch.cuda.empty_cache()
     
@@ -250,8 +253,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
                     if (dim != 1) and (dim != 2):
                         JAC_plot_path = f'{args.train_dir}JAC_'+str(i)+'.jpg'
-                        plot_vector_field(model, path=JAC_plot_path, idx=1, t=0., N=100, device='cuda')
-                        plot_vector_field(model, dim, path=JAC_plot_path, idx=2, t=0., N=100, device='cuda')
+                        plot_vector_field(model, dim, path=JAC_plot_path, idx=idx, t=0., N=100, device='cuda')
                 k = k + 1
 
     if loss_type == "Jacobian":
@@ -262,7 +264,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         if (dim == 1) or (dim == 2):
             plot_map(model, dim, s, 1000, torch.randn(dim), MSE_plot_path)
         else:
-            plot_vector_field(model, dim, path=MSE_plot_path, idx=1, t=0., N=100, device='cuda')
+            plot_vector_field(model, ds_name, dim, path=MSE_plot_path, idx=idx, t=0., N=100, device='cuda')
         jac_diff_train, jac_diff_test = None, None
     # Load the best relative error model
     best_model = model
@@ -272,7 +274,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     if (dim == 1) or (dim == 2):
         plot_map(model, dim, s, 1000, torch.randn(dim), RE_plot_path)
     else:
-        plot_vector_field(best_model, dim, path=RE_plot_path, idx=2, t=0., N=100, device='cuda')
+        plot_vector_field(best_model, ds_name, dim, path=RE_plot_path, idx=idx, t=0., N=100, device='cuda')
     return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test, Y_test
 
 
@@ -409,12 +411,16 @@ def plot_vf_err_test(model, y_pred_train, dyn_info, model_type, loss_type):
     path = f"{args.train_dir}MSE_error_Ytest.png"
     savefig(path)
 
-def plot_vector_field(model, dim, path, idx, t, N, device='cuda'):
+def plot_vector_field(model, d_name, dim, path, idx, t, N, device='cuda'):
     # Credit: https://torchdyn.readthedocs.io/en/latest/_modules/torchdyn/utils.html
 
     if dim == 3:
-        x = torch.linspace(-50, 50, N)
-        y = torch.linspace(-50, 50, N)
+        if d_name == "lorenz":
+            x = torch.linspace(-20, 20, N)
+            y = torch.linspace(-25, 25, N)
+        else:
+            x = torch.linspace(-10, 10, N)
+            y = torch.linspace(0, 20, N)
     elif dim == 4:
         x = torch.linspace(-150, 150, N)
         y = torch.linspace(-150, 150, N)
@@ -428,9 +434,11 @@ def plot_vector_field(model, dim, path, idx, t, N, device='cuda'):
         for j in range(N):
             if dim == 3:
                 if idx == 1:
+                    # lorenz
                     phi = torch.stack([X[i,j], Y[i,j], torch.tensor(20.)]).to('cuda')
                 else:
-                    phi = torch.stack([X[i,j], torch.tensor(0), Y[i,j]]).to('cuda')
+                    # rossler
+                    phi = torch.stack([X[i,j], torch.tensor(-2.), Y[i,j]]).to('cuda')
                 
                 O = model(0., phi).detach().cpu().numpy()
                 if O.ndim == 1:
@@ -512,23 +520,23 @@ if __name__ == '__main__':
     print("device: ", device)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--time_step", type=float, default=1e-3)
+    parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=10000)
+    parser.add_argument("--num_epoch", type=int, default=100)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_val", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=0)
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
-    parser.add_argument("--dyn_sys", default="hyperchaos", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
+    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
+    parser.add_argument("--dyn_sys", default="rossler", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip"])
     parser.add_argument("--s", type=int, default=0.5)
     parser.add_argument("--n_hidden", type=int, default=256)
-    parser.add_argument("--n_layers", type=int, default=4)
+    parser.add_argument("--n_layers", type=int, default=15)
     parser.add_argument("--reg_param", type=float, default=1000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/hyperchaos/train_MLPskip_MSE_fullbatch/")
+    parser.add_argument("--train_dir", default="../plot/Vector_field/rossler/train_MLPskip_Jacobian_fullbatch/")
 
     # Initialize Settings
     args = parser.parse_args()
@@ -594,8 +602,8 @@ if __name__ == '__main__':
     if (dim != 1) and (dim != 2):
         percentage_err = plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
         plot_vf_err_test(m, Y_test, dyn_sys_info, args.model_type, args.loss_type)
-        plot_vector_field(dyn_sys_func, dim, path=true_plot_path_1, idx=1, t=0., N=100, device='cuda')
-        plot_vector_field(dyn_sys_func, dim, path=true_plot_path_2, idx=2, t=0., N=100, device='cuda')
+        plot_vector_field(dyn_sys_func, args.dyn_sys, dim, path=true_plot_path_1, idx=1, t=0., N=100, device='cuda')
+        plot_vector_field(dyn_sys_func, args.dyn_sys, dim, path=true_plot_path_2, idx=2, t=0., N=100, device='cuda')
         plot_attractor(m, dyn_sys_info, 50, phase_path)
     else:
         plot_map(m, dim, args.s, 3000, torch.randn(dim), phase_path)
@@ -603,14 +611,17 @@ if __name__ == '__main__':
 
     # compute LE
     if (dim == 1) or (dim == 2):
+        print("dim is 1 or 2")
         true_traj = simulate_map(dyn_sys_func, args.s, dim, 1000, torch.randn(dim))
     else:
-        true_traj = torchdiffeq.odeint(dyn_sys_func, torch.randn(dim).cuda(), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
+        print("dim is bigger than 2")
+        rand_x = torch.randn(dim).cuda()
+        print("x", rand_x)
+        true_traj = torchdiffeq.odeint(dyn_sys_func, rand_x, torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
     print("Computing LEs of NN...")
     learned_LE = lyap_exps([args.dyn_sys, m, dim, args.time_step], args.s, true_traj, true_traj.shape[0]).detach().cpu().numpy()
     print("Computing true LEs...")
     True_LE = lyap_exps([args.dyn_sys, dyn_sys_func, dim, args.time_step], args.s, true_traj, true_traj.shape[0]).detach().cpu().numpy()
-    loss_hist, test_loss_hist, jac_train_hist, jac_test_hist
 
     logger.info("%s: %s", "Training Loss", str(loss_hist[-1]))
     logger.info("%s: %s", "Test Loss", str(test_loss_hist[-1]))
