@@ -1,0 +1,44 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 1e-05
+num_epoch: 10000
+num_train: 10000
+num_test: 3000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: lorenz
+model_type: MLP_skip
+n_hidden: 256
+n_layers: 3
+reg_param: 500
+optim_name: AdamW
+train_dir: ../plot/Vector_field/train_MLPskip_Jac/
+Epoch 0: New minimal relative error: 99.58%, model saved.
+Epoch: 0 Train: 31502.96680 Test: 4090.69482
+Epoch: 100 Train: 8879.65723 Test: 1412.47974
+Epoch: 200 Train: 8377.14355 Test: 1290.02600
+Epoch 300: New minimal relative error: 87.61%, model saved.
+Epoch: 300 Train: 7028.41016 Test: 1039.21680
+Epoch: 400 Train: 5751.36475 Test: 620.58215
+Epoch 500: New minimal relative error: 82.16%, model saved.
+Epoch: 500 Train: 4646.22852 Test: 572.23431
+Epoch 600: New minimal relative error: 51.59%, model saved.
+Epoch: 600 Train: 3050.02954 Test: 259.75232
+Epoch 700: New minimal relative error: 34.65%, model saved.
+Epoch: 700 Train: 1445.38586 Test: 64.56337
+Epoch: 800 Train: 853.68610 Test: 93.49329
+Epoch 900: New minimal relative error: 20.87%, model saved.
+Epoch: 900 Train: 618.51538 Test: 21.62962
+Epoch 1000: New minimal relative error: 14.16%, model saved.
+Epoch: 1000 Train: 412.39853 Test: 11.24546
+Epoch: 1100 Train: 398.56598 Test: 53.23124
+Epoch 1200: New minimal relative error: 10.45%, model saved.
+Epoch: 1200 Train: 284.05142 Test: 5.76589
+Epoch: 1300 Train: 289.76923 Test: 10.07800
+Epoch: 1400 Train: 262.22900 Test: 6.54082
+Epoch: 1500 Train: 233.11742 Test: 4.38676
+Epoch: 1600 Train: 205.69989 Test: 3.29405
+Epoch: 1700 Train: 219.72501 Test: 5.81304
+Epoch: 1800 Train: 204.57419 Test: 19.76397
+Epoch: 1900 Train: 182.58620 Test: 6.02857

@@ -253,7 +253,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
                     if (dim != 1) and (dim != 2):
                         JAC_plot_path = f'{args.train_dir}JAC_'+str(i)+'.jpg'
-                        plot_vector_field(model, dim, path=JAC_plot_path, idx=idx, t=0., N=100, device='cuda')
+                        plot_vector_field(model, ds_name, dim, path=JAC_plot_path, idx=idx, t=0., N=100, device='cuda')
                 k = k + 1
 
     if loss_type == "Jacobian":
@@ -523,7 +523,7 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=100)
+    parser.add_argument("--num_epoch", type=int, default=15000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_val", type=int, default=3000)
@@ -533,7 +533,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip"])
     parser.add_argument("--s", type=int, default=0.5)
     parser.add_argument("--n_hidden", type=int, default=256)
-    parser.add_argument("--n_layers", type=int, default=15)
+    parser.add_argument("--n_layers", type=int, default=5)
     parser.add_argument("--reg_param", type=float, default=1000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
     parser.add_argument("--train_dir", default="../plot/Vector_field/rossler/train_MLPskip_Jacobian_fullbatch/")
@@ -613,13 +613,15 @@ if __name__ == '__main__':
     if (dim == 1) or (dim == 2):
         print("dim is 1 or 2")
         true_traj = simulate_map(dyn_sys_func, args.s, dim, 1000, torch.randn(dim))
+        learned_traj = simulate_map(m, args.s, dim, 1000, torch.randn(dim))
     else:
         print("dim is bigger than 2")
         rand_x = torch.randn(dim).cuda()
         print("x", rand_x)
         true_traj = torchdiffeq.odeint(dyn_sys_func, rand_x, torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
+        learned_traj = torchdiffeq.odeint(m, rand_x, torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
     print("Computing LEs of NN...")
-    learned_LE = lyap_exps([args.dyn_sys, m, dim, args.time_step], args.s, true_traj, true_traj.shape[0]).detach().cpu().numpy()
+    learned_LE = lyap_exps([args.dyn_sys, m, dim, args.time_step], args.s, learned_traj, true_traj.shape[0]).detach().cpu().numpy()
     print("Computing true LEs...")
     True_LE = lyap_exps([args.dyn_sys, dyn_sys_func, dim, args.time_step], args.s, true_traj, true_traj.shape[0]).detach().cpu().numpy()
 
