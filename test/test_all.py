@@ -417,7 +417,7 @@ def plot_vector_field(model, d_name, dim, path, idx, t, N, device='cuda'):
     if dim == 3:
         if d_name == "lorenz":
             x = torch.linspace(-20, 20, N)
-            y = torch.linspace(-25, 25, N)
+            y = torch.linspace(-20, 20, N)
         else:
             x = torch.linspace(-10, 10, N)
             y = torch.linspace(0, 20, N)
@@ -435,7 +435,7 @@ def plot_vector_field(model, d_name, dim, path, idx, t, N, device='cuda'):
             if dim == 3:
                 if idx == 1:
                     # lorenz
-                    phi = torch.stack([X[i,j], Y[i,j], torch.tensor(20.)]).to('cuda')
+                    phi = torch.stack([X[i,j], Y[i,j], torch.tensor(30.)]).to('cuda')
                 else:
                     # rossler
                     phi = torch.stack([X[i,j], torch.tensor(-2.), Y[i,j]]).to('cuda')
@@ -523,20 +523,20 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=15000)
+    parser.add_argument("--num_epoch", type=int, default=20000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_val", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
-    parser.add_argument("--dyn_sys", default="rossler", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
+    parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip"])
     parser.add_argument("--s", type=int, default=0.5)
     parser.add_argument("--n_hidden", type=int, default=256)
     parser.add_argument("--n_layers", type=int, default=5)
     parser.add_argument("--reg_param", type=float, default=1000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/rossler/train_MLPskip_Jacobian_fullbatch/")
+    parser.add_argument("--train_dir", default="../plot/Vector_field/lorenz/train_MLPskip_Jacobian_fullbatch/")
 
     # Initialize Settings
     args = parser.parse_args()

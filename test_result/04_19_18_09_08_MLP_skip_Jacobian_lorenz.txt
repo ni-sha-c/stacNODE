@@ -1,0 +1,25 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 0.0001
+num_epoch: 20000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: lorenz
+model_type: MLP_skip
+s: 0.5
+n_hidden: 256
+n_layers: 5
+reg_param: 1000
+optim_name: AdamW
+train_dir: ../plot/Vector_field/lorenz/train_MLPskip_Jacobian_fullbatch/
+Epoch 0: New minimal relative error: 99.58%, model saved.
+Epoch: 0 Train: 59135.30078 Test: 4072.91406
+Epoch: 200 Train: 14821.50000 Test: 1384.87952
+Epoch: 400 Train: 12481.81836 Test: 1287.49536
+Epoch 600: New minimal relative error: 89.84%, model saved.
+Epoch: 600 Train: 11899.19336 Test: 846.38837
+Epoch: 800 Train: 7881.97656 Test: 422.00690
+Epoch: 1000 Train: 4362.02344 Test: 181.80113
