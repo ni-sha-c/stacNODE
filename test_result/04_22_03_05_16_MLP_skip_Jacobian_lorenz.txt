@@ -1,0 +1,137 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 0.0001
+num_epoch: 100
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: lorenz
+model_type: MLP_skip
+s: 0.5
+n_hidden: 256
+n_layers: 5
+reg_param: 1000
+optim_name: AdamW
+train_dir: ../plot/Vector_field/lorenz/train_MLPskip_MSE_fullbatch/
+Epoch 0: New minimal relative error: 99.58%, model saved.
+Epoch: 0 Train: 59135.30078 Test: 4072.91406
+Epoch 1: New minimal relative error: 99.28%, model saved.
+Epoch: 1 Train: 58793.80078 Test: 4061.72949
+Epoch 2: New minimal relative error: 98.98%, model saved.
+Epoch: 2 Train: 58468.03125 Test: 4049.58569
+Epoch: 3 Train: 58112.79297 Test: 4035.44019
+Epoch: 4 Train: 57705.33594 Test: 4018.25513
+Epoch: 5 Train: 57211.87500 Test: 3997.57227
+Epoch 6: New minimal relative error: 97.51%, model saved.
+Epoch: 6 Train: 56618.60547 Test: 3973.29004
+Epoch 7: New minimal relative error: 96.98%, model saved.
+Epoch: 7 Train: 55916.02344 Test: 3944.95923
+Epoch 8: New minimal relative error: 96.64%, model saved.
+Epoch: 8 Train: 55087.64844 Test: 3912.12793
+Epoch 9: New minimal relative error: 96.19%, model saved.
+Epoch: 9 Train: 54116.55859 Test: 3874.26367
+Epoch: 10 Train: 52979.23047 Test: 3830.95386
+Epoch: 11 Train: 51657.86719 Test: 3781.86523
+Epoch 12: New minimal relative error: 95.99%, model saved.
+Epoch: 12 Train: 50142.00000 Test: 3726.74731
+Epoch: 13 Train: 48405.48438 Test: 3666.05322
+Epoch: 14 Train: 46447.87500 Test: 3600.64746
+Epoch: 15 Train: 44294.51953 Test: 3531.62256
+Epoch: 16 Train: 41977.71484 Test: 3460.18530
+Epoch: 17 Train: 39573.30078 Test: 3388.01611
+Epoch: 18 Train: 37181.85156 Test: 3316.43213
+Epoch 19: New minimal relative error: 92.33%, model saved.
+Epoch: 19 Train: 34962.78906 Test: 3245.98486
+Epoch: 20 Train: 33101.88281 Test: 3176.90308
+Epoch 21: New minimal relative error: 91.31%, model saved.
+Epoch: 21 Train: 31727.50977 Test: 3107.74292
+Epoch: 22 Train: 30753.23633 Test: 3034.27905
+Epoch: 23 Train: 30305.13477 Test: 2949.59814
+Epoch: 24 Train: 29994.06641 Test: 2850.01416
+Epoch: 25 Train: 29042.02734 Test: 2739.27246
+Epoch: 26 Train: 27821.29102 Test: 2626.03271
+Epoch: 27 Train: 26620.75781 Test: 2519.33838
+Epoch: 28 Train: 25553.11133 Test: 2426.50220
+Epoch: 29 Train: 24627.09180 Test: 2353.24585
+Epoch: 30 Train: 23870.01562 Test: 2303.65771
+Epoch: 31 Train: 23276.68750 Test: 2277.32983
+Epoch: 32 Train: 22804.28516 Test: 2269.57349
+Epoch: 33 Train: 22448.49219 Test: 2271.36987
+Epoch: 34 Train: 22208.90430 Test: 2270.37134
+Epoch: 35 Train: 22039.69922 Test: 2256.79077
+Epoch: 36 Train: 21876.43359 Test: 2228.37354
+Epoch: 37 Train: 21668.09375 Test: 2190.39355
+Epoch: 38 Train: 21407.29688 Test: 2150.68188
+Epoch: 39 Train: 21161.76562 Test: 2114.66187
+Epoch 40: New minimal relative error: 69.29%, model saved.
+Epoch: 40 Train: 20894.16406 Test: 2085.08008
+Epoch: 41 Train: 20630.93555 Test: 2062.08057
+Epoch: 42 Train: 20378.92188 Test: 2044.34485
+Epoch 43: New minimal relative error: 67.22%, model saved.
+Epoch: 43 Train: 20122.88672 Test: 2030.33801
+Epoch: 44 Train: 19865.59961 Test: 2018.70935
+Epoch: 45 Train: 19626.44727 Test: 2008.88794
+Epoch 46: New minimal relative error: 66.41%, model saved.
+Epoch: 46 Train: 19387.47461 Test: 2001.11951
+Epoch: 47 Train: 19163.77930 Test: 1996.10193
+Epoch: 48 Train: 18943.69922 Test: 1994.58960
+Epoch: 49 Train: 18744.63867 Test: 1997.19031
+Epoch: 50 Train: 18572.52539 Test: 2004.02942
+Epoch: 51 Train: 18432.65039 Test: 2014.68994
+Epoch: 52 Train: 18337.67578 Test: 2028.21216
+Epoch: 53 Train: 18276.93359 Test: 2043.14246
+Epoch: 54 Train: 18233.16211 Test: 2057.95801
+Epoch: 55 Train: 18194.33984 Test: 2071.32690
+Epoch: 56 Train: 18159.01562 Test: 2082.12842
+Epoch: 57 Train: 18113.50977 Test: 2089.52075
+Epoch: 58 Train: 18057.74609 Test: 2093.09473
+Epoch: 59 Train: 17986.94727 Test: 2092.75757
+Epoch: 60 Train: 17904.86719 Test: 2088.75562
+Epoch: 61 Train: 17813.49805 Test: 2081.52905
+Epoch: 62 Train: 17714.30469 Test: 2071.61475
+Epoch: 63 Train: 17607.58789 Test: 2059.67163
+Epoch: 64 Train: 17502.49609 Test: 2046.34692
+Epoch: 65 Train: 17396.98828 Test: 2032.20007
+Epoch: 66 Train: 17298.99805 Test: 2017.59082
+Epoch: 67 Train: 17209.95117 Test: 2002.79480
+Epoch: 68 Train: 17129.73438 Test: 1988.08936
+Epoch: 69 Train: 17059.96680 Test: 1973.70203
+Epoch: 70 Train: 16998.56836 Test: 1959.76587
+Epoch: 71 Train: 16943.43359 Test: 1946.34314
+Epoch: 72 Train: 16896.34375 Test: 1933.47241
+Epoch: 73 Train: 16853.73828 Test: 1921.17786
+Epoch: 74 Train: 16811.87695 Test: 1909.46350
+Epoch: 75 Train: 16770.20508 Test: 1898.31372
+Epoch: 76 Train: 16729.86133 Test: 1887.73181
+Epoch: 77 Train: 16688.03516 Test: 1877.75427
+Epoch: 78 Train: 16653.41406 Test: 1868.42029
+Epoch: 79 Train: 16619.48438 Test: 1859.72070
+Epoch: 80 Train: 16588.18945 Test: 1851.65454
+Epoch: 81 Train: 16561.90234 Test: 1844.20410
+Epoch: 82 Train: 16542.74609 Test: 1837.33240
+Epoch: 83 Train: 16532.02148 Test: 1830.97388
+Epoch: 84 Train: 16524.46484 Test: 1825.05652
+Epoch: 85 Train: 16525.34375 Test: 1819.51294
+Epoch: 86 Train: 16526.20312 Test: 1814.25793
+Epoch: 87 Train: 16523.41211 Test: 1809.21729
+Epoch: 88 Train: 16527.63281 Test: 1804.33301
+Epoch: 89 Train: 16531.40234 Test: 1799.54822
+Epoch: 90 Train: 16534.35156 Test: 1794.81238
+Epoch: 91 Train: 16540.74609 Test: 1790.09888
+Epoch: 92 Train: 16544.57031 Test: 1785.39355
+Epoch: 93 Train: 16546.26758 Test: 1780.69556
+Epoch: 94 Train: 16545.48828 Test: 1776.01440
+Epoch: 95 Train: 16543.60938 Test: 1771.36511
+Epoch: 96 Train: 16540.75781 Test: 1766.76062
+Epoch: 97 Train: 16539.89453 Test: 1762.21106
+Epoch: 98 Train: 16531.15625 Test: 1757.72961
+Epoch: 99 Train: 16525.13477 Test: 1753.33813
+Training Loss: tensor(-0.2611)
+Test Loss: tensor(6.9951e-34)
+Jacobian term Training Loss: tensor(7.2110e+28)
+Jacobian term Test Loss: tensor(-5.1489e-06)
+Learned LE: [   9.777679  -27.140388 -116.280106]
+True LE: [ 8.6370689e-01  1.4472105e-04 -1.4545274e+01]
+Relative Error: [111.28538  112.50375  112.46838  ...  63.706154  74.670395  83.81428 ]

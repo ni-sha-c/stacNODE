@@ -7,7 +7,9 @@ import datetime
 import numpy as np
 import argparse
 import logging
+import time
 import os
+import csv
 from matplotlib.pyplot import *
 
 import sys
@@ -165,6 +167,20 @@ def vectorized_simulate(model, X, t_eval_point, len_T, device):
         X = traj[i]
     return traj
 
+class Timer:
+    def __init__(self):
+        self.elapsed_times = []
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end_time = time.time()
+        self.elapsed_time = self.end_time - self.start_time
+        self.elapsed_times.append(self.elapsed_time)
+        return False
+
 def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, lr, weight_decay, reg_param, loss_type, model_type, s):
 
     # Initialize
@@ -178,8 +194,10 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     ds_name = find_ds_name(dyn_sys)
     idx = 1 if ds_name == "lorenz" else 2
     t_eval_point = torch.linspace(0, time_step, 2).to(device)
+    elapsed_time_train = []
+    timer = Timer()
     torch.cuda.empty_cache()
-    
+
     # Compute True Jacobian
     if loss_type == "Jacobian":
         jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
@@ -192,6 +210,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     # Training Loop
     min_relative_error = 1000000
     for i in range(epochs):
+        start_time = time.time() 
         model.train()
         if (dim == 1) or (dim == 2):
             y_pred = model(0, X_train).to(device)
@@ -201,20 +220,21 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         train_loss = criterion(y_pred, Y_train)  * (1/time_step/time_step)
 
         if loss_type == "Jacobian":
-            # Compute Jacobian
-            if (dim == 1) or (dim == 2):
-                jacrev = torch.func.jacrev(model)
-                compute_batch_jac = torch.vmap(jacrev, chunk_size=1000)
-                cur_model_J = compute_batch_jac(X).to(device)
-            elif (ds_name == "KS"):
-                integrated_model = lambda x: rk4(x, model, t_eval_point).to(device)
-                jacrev = torch.func.jacrev(integrated_model)
-                compute_batch_jac = torch.func.vmap(jacrev, in_dims=(0), chunk_size=500)
-                cur_model_J = compute_batch_jac(X).to(device)
-            else:
-                jacrev = torch.func.jacrev(model, argnums=1)
-                compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
-                cur_model_J = compute_batch_jac(0, X_train).to(device)
+            with timer:
+                # Compute Jacobian
+                if (dim == 1) or (dim == 2):
+                    jacrev = torch.func.jacrev(model)
+                    compute_batch_jac = torch.vmap(jacrev, chunk_size=1000)
+                    cur_model_J = compute_batch_jac(X).to(device)
+                elif (ds_name == "KS"):
+                    integrated_model = lambda x: rk4(x, model, t_eval_point).to(device)
+                    jacrev = torch.func.jacrev(integrated_model)
+                    compute_batch_jac = torch.func.vmap(jacrev, in_dims=(0), chunk_size=500)
+                    cur_model_J = compute_batch_jac(X).to(device)
+                else:
+                    jacrev = torch.func.jacrev(model, argnums=1)
+                    compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
+                    cur_model_J = compute_batch_jac(0, X_train).to(device)
             jac_norm_diff = criterion(True_J, cur_model_J)
             train_loss += reg_param*jac_norm_diff
 
@@ -248,17 +268,25 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
 
                 if loss_type == "Jacobian":
-                    test_model_J = compute_batch_jac(0, X_test).to(device)
+                    test_model_J = compute_batch_jac(model, X_test).to(device)
                     test_jac_norm_diff = criterion(Test_J, test_model_J)
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
                     if (dim != 1) and (dim != 2):
                         JAC_plot_path = f'{args.train_dir}JAC_'+str(i)+'.jpg'
                         plot_vector_field(model, ds_name, dim, path=JAC_plot_path, idx=idx, t=0., N=100, device='cuda')
                 k = k + 1
+        end_time = time.time()  
+        elapsed_time = end_time - start_time
+        elapsed_time_train.append(elapsed_time)
 
     if loss_type == "Jacobian":
         for i in [0, 1, 50, -2, -1]:
             print("Point:", X_train[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
+        with open('../test_result/Time/elapsed_times_Jacobian.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Epoch', 'Elapsed Time (seconds)'])
+            for epoch, elapsed_time in enumerate(timer.elapsed_times, 1):
+                writer.writerow([epoch, elapsed_time])
     else:
         MSE_plot_path = f'{args.train_dir}MSE_'+str(i)+'.jpg'
         if (dim == 1) or (dim == 2):
@@ -266,6 +294,11 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         else:
             plot_vector_field(model, ds_name, dim, path=MSE_plot_path, idx=idx, t=0., N=100, device='cuda')
         jac_diff_train, jac_diff_test = None, None
+    with open('../test_result/Time/epoch_times.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Epoch', 'Elapsed Time (seconds)'])
+        for epoch, elapsed_time in enumerate(elapsed_time_train, 1):
+            writer.writerow([epoch, elapsed_time])
     # Load the best relative error model
     best_model = model
     best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model.pth"))
@@ -439,7 +472,6 @@ def plot_vector_field(model, d_name, dim, path, idx, t, N, device='cuda'):
                 else:
                     # rossler
                     phi = torch.stack([X[i,j], torch.tensor(-2.), Y[i,j]]).to('cuda')
-                
                 O = model(0., phi).detach().cpu().numpy()
                 if O.ndim == 1:
                     U[i,j], V[i,j] = O[0], O[idx]
@@ -467,6 +499,9 @@ def plot_vector_field(model, d_name, dim, path, idx, t, N, device='cuda'):
         ax.set_ylabel(r"$z$", fontsize=17)
     ax.xaxis.set_tick_params(labelsize=17)
     ax.yaxis.set_tick_params(labelsize=17)
+    # if d_name == "lorenz":
+    #     fig.colorbar(contourf)
+    # else: 
     fig.colorbar(contourf)
     tight_layout()
     savefig(path, format='jpg', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
@@ -523,7 +558,7 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--num_epoch", type=int, default=20000)
+    parser.add_argument("--num_epoch", type=int, default=30000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_val", type=int, default=3000)
@@ -536,7 +571,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_layers", type=int, default=5)
     parser.add_argument("--reg_param", type=float, default=1000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/lorenz/train_MLPskip_Jacobian_fullbatch/")
+    parser.add_argument("--train_dir", default="../plot/Vector_field/lorenz/train_MLPskip_MSE_fullbatch/")
 
     # Initialize Settings
     args = parser.parse_args()
