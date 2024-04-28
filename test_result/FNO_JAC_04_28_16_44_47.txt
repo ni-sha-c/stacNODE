@@ -1,0 +1,10 @@
+JAC
+num_mode=3
+batch_size = 10?
+epoch = 2000
+
+Training Loss: tensor(0.0040, device='cuda:0', grad_fn=<AddBackward0>)
+Learned LE: [  0.3175228   -0.35518956 -14.0962715 ]
+True LE: [  0.20553118  -0.1291228  -13.8884325 ]
+Learned mean: tensor([ 4.9334,  4.8376, 25.2529], device='cuda:0', grad_fn=<MeanBackward1>)
+True mean: tensor([-7.0499, -7.0602, 26.0506])

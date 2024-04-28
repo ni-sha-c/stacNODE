@@ -19,7 +19,7 @@ from modulus.models.fno import FNO
 # from modulus.launch.logging import LaunchLogger
 # from modulus.launch.utils.checkpoint import save_checkpoint
 
-def main(logger):
+def main(logger, loss_type):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("Device: ", device)
@@ -159,7 +159,7 @@ def main(logger):
 
     print("Creating Dataset")
     n_train = 2000
-    batch_size = 20
+    batch_size = 10
     dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
     train_list = [dataset[0], dataset[1]]
     val_list = [dataset[2], dataset[3]]
@@ -169,7 +169,7 @@ def main(logger):
     val_data = TensorDataset(*val_list)
     dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False)
     val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
-    print(len(dataloader), dataloader.batch_size)
+    print("Mini-batch: ", len(dataloader), dataloader.batch_size)
 
     model = FNO(
         in_channels=3,
@@ -190,8 +190,8 @@ def main(logger):
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=1e-3)
 
     ### Training Loop ###
-    n_store, k  = 10, 0
-    num_epochs = 1500
+    n_store, k  = 100, 0
+    num_epochs = 3000
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, 0.01, 2).cuda()
@@ -218,22 +218,22 @@ def main(logger):
             loss_mse = criterion(y_pred.view(batch_size, -1), y_true.view(batch_size, -1))
             loss = loss_mse / torch.norm(y_true, p=2)
             
-            
-            '''jac = torch.func.jacrev(model)
-            x = data[0].unsqueeze(dim=2).to('cuda')
-            cur_model_J = jac(x)
-            squeezed_J = cur_model_J[:, :, 0, :, :, 0]
-            non_zero_indices = torch.nonzero(squeezed_J)
-            non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
-            learned_J = non_zero_values.reshape(x.shape[0], 3, 3)
-            if epoch % 100 == 0:
-                print(learned_J[5, 1])
-                print(True_J[idx][5, 1], "\n")
+            if loss_type == "JAC":
+                jac = torch.func.jacrev(model)
+                x = data[0].unsqueeze(dim=2).to('cuda')
+                cur_model_J = jac(x)
+                squeezed_J = cur_model_J[:, :, 0, :, :, 0]
+                non_zero_indices = torch.nonzero(squeezed_J)
+                non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
+                learned_J = non_zero_values.reshape(x.shape[0], 3, 3)
+                if epoch % 100 == 0:
+                    print(learned_J[5, 1])
+                    print(True_J[idx][5, 1], "\n")
 
-            # jac_norm_diff = criterion(torch.flatten(True_J[idx], start_dim=2), torch.flatten(learned_J, start_dim=2))
-            jac_norm_diff = criterion(True_J[idx], learned_J)
-            reg_param = 2.0
-            loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param'''
+                # jac_norm_diff = criterion(torch.flatten(True_J[idx], start_dim=2), torch.flatten(learned_J, start_dim=2))
+                jac_norm_diff = criterion(True_J[idx], learned_J)
+                reg_param = 2.0
+                loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param
                         
 
             full_loss += loss
@@ -271,6 +271,7 @@ def main(logger):
     True_var = torch.var(true_traj, dim = 0)
     Learned_var = torch.var(learned_traj, dim=0)
 
+    logger.info("%s: %s", "Loss Type", str(loss_type))
     logger.info("%s: %s", "Training Loss", str(full_loss))
     logger.info("%s: %s", "Learned LE", str(learned_LE))
     logger.info("%s: %s", "True LE", str(True_LE))
@@ -285,4 +286,4 @@ if __name__ == "__main__":
     logger = logging.getLogger()
 
     # call main
-    main(logger)
+    main(logger, "JAC")

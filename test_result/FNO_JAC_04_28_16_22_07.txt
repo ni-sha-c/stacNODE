@@ -1,3 +1,6 @@
+JAC Loss
+Num_mode = 3
+
 Training Loss: tensor(0.0058, device='cuda:0', grad_fn=<AddBackward0>)
 Learned LE: [ 1.9930365e-02 -6.5175945e-01 -2.9265463e+01]
 True LE: [  0.2643227   0.1528173 -14.2661495]
