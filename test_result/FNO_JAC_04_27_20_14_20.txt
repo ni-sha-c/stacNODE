@@ -1,0 +1,6 @@
+Minibatch: 200
+Training Loss: tensor(0.0089, device='cuda:0', grad_fn=<AddBackward0>)
+Learned LE: [  0.06917312  -0.19705814 -11.663363  ]
+True LE: [  0.6077531    0.06028274 -14.38592   ]
+Learned mean: tensor([ 2.7415,  2.9700, 28.9077], device='cuda:0', grad_fn=<MeanBackward1>)
+True mean: tensor([ 1.3397,  1.3700, 24.4422])

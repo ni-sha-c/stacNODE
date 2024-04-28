@@ -19,7 +19,7 @@ from modulus.models.fno import FNO
 # from modulus.launch.logging import LaunchLogger
 # from modulus.launch.utils.checkpoint import save_checkpoint
 
-def main():
+def main(logger):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("Device: ", device)
@@ -65,23 +65,124 @@ def main():
 
         return [X_train, Y_train, X_val, Y_val, X_test, Y_test]
 
+    ### Compute Metric ###
+    def rk4(x, f, dt):
+        k1 = f(0, x)
+        k2 = f(0, x + dt*k1/2)
+        k3 = f(0, x + dt*k2/2)
+        k4 = f(0, x + dt*k3)
+        return x + dt/6*(k1 + 2*k2 + 2*k3 + k4)
+    
+    def lyap_exps(dyn_sys_info, ds_name, traj, iters, batch_size):
+        model, dim, time_step = dyn_sys_info
+        LE = torch.zeros(dim).to(device)
+        traj_gpu = traj.to(device)
+        if model == lorenz:
+            f = lambda x: rk4(x, model, time_step)
+            Jac = torch.vmap(torch.func.jacrev(f))(traj_gpu)
+        else:
+            f = model
+            # traj_in_batch = traj_gpu.reshape(-1, 1, dim, 1)
+            traj_data = TensorDataset(traj_gpu)
+            traj_loader = DataLoader(traj_data, batch_size=batch_size, shuffle=False)
+            Jac = torch.randn(traj_gpu.shape[0], dim, dim).cuda()
+            i = 0
+            for traj in traj_loader:
+                # print("shape", traj)
+                jac = torch.func.jacrev(f)
+                x = traj[0].unsqueeze(dim=2).to('cuda')
+                batchsize = x.shape[0]
+                cur_model_J = jac(x)
+                non_zero = torch.nonzero(cur_model_J, as_tuple=True)
+                Jac[i:i+batchsize] = cur_model_J[non_zero].reshape(batchsize, 3,3)
+                i +=batchsize
+                print(i)
+                print(Jac[i:i+batchsize])
+
+            
+            # for j in range(traj_in_batch.shape[0]):
+            #     Jac[j] = torch.autograd.functional.jacobian(f, traj_in_batch[j]).squeeze()
+            #     print(Jac[j])
+            # Not possible due to inplace arithmatic in line 82
+            # Jac = torch.vmap(torch.func.jacrev(f))(traj_in_batch)
+
+        print("Finish")
+        Q = torch.rand(dim,dim).to(device)
+        eye_cuda = torch.eye(dim).to(device)
+        for i in range(iters):
+            if i > 0 and i % 1000 == 0:
+                print("Iteration: ", i, ", LE[0]: ", LE[0].detach().cpu().numpy()/i/time_step)
+            Q = torch.matmul(Jac[i], Q)
+            Q, R = torch.linalg.qr(Q)
+            LE += torch.log(abs(torch.diag(R)))
+        return LE/iters/time_step
+
+
+    def plot_attractor(model, dyn_info, time, path):
+        # generate true orbit and learned orbit
+        dyn, dim, time_step = dyn_info
+        tran_orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
+        true_o = torchdiffeq.odeint(dyn, tran_orbit[-1], torch.arange(0, time, time_step), method='rk4', rtol=1e-8)
+
+        learned_o = torch.zeros(time*int(1/time_step), dim)
+        x0 = tran_orbit[-1]
+        for t in range(time*int(1/time_step)):
+            learned_o[t] = x0
+            new_x = model(x0.reshape(1, dim, 1).cuda())
+            x0 = new_x.squeeze()
+        learned_o = learned_o.detach().cpu().numpy()
+
+        # create plot of attractor with initial point starting from 
+        fig, axs = subplots(2, 3, figsize=(24,12))
+        cmap = cm.plasma
+        num_row, num_col = axs.shape
+
+        for x in range(num_row):
+            for y in range(num_col):
+                orbit = true_o if x == 0 else learned_o
+                if y == 0:
+                    axs[x,y].plot(orbit[0, 0], orbit[0, 1], '+', markersize=35, color=cmap.colors[0])
+                    axs[x,y].scatter(orbit[:, 0], orbit[:, 1], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                    axs[x,y].set_xlabel("X")
+                    axs[x,y].set_ylabel("Y")
+                elif y == 1:
+                    axs[x,y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color=cmap.colors[0])
+                    axs[x,y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                    axs[x,y].set_xlabel("X")
+                    axs[x,y].set_ylabel("Z")
+                else:
+                    axs[x,y].plot(orbit[0, 1], orbit[0, 2], '+', markersize=35, color=cmap.colors[0])
+                    axs[x,y].scatter(orbit[:, 1], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                    axs[x,y].set_xlabel("Y")
+                    axs[x,y].set_ylabel("Z")
+            
+                axs[x,y].tick_params(labelsize=42)
+                axs[x,y].xaxis.label.set_size(42)
+                axs[x,y].yaxis.label.set_size(42)
+        tight_layout()
+        fig.savefig(path, format='png', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
+        return
+
     print("Creating Dataset")
-    dataset = create_data([lorenz, 3, 0.01], n_train=10000, n_test=3000, n_val=3000, n_trans=0)
+    n_train = 8000
+    batch_size = 50
+    dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=1000, n_val=1000, n_trans=0)
     train_list = [dataset[0], dataset[1]]
     val_list = [dataset[2], dataset[3]]
     test_list = [dataset[4], dataset[5]]
 
     train_data = TensorDataset(*train_list)
     val_data = TensorDataset(*val_list)
-    dataloader = DataLoader(train_data, batch_size=16, shuffle=True)
-    val_dataloader = DataLoader(val_data, batch_size=16, shuffle=False)
+    dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False)
+    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
     print(len(dataloader), dataloader.batch_size)
 
     model = FNO(
         in_channels=3,
         out_channels=3,
         num_fno_modes=2,
-        dimension=1
+        dimension=1,
+        latent_channels=256
     ).to('cuda')
 
     optimizer = torch.optim.AdamW(
@@ -95,16 +196,23 @@ def main():
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=1e-3)
 
     ### Training Loop ###
-    n_store, k  = 100, 0
+    n_store, k  = 10, 0
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
-    f = lambda x: lorenz(0, x)
-    true_jac_fn = torch.vmap(torch.func.jacrev(f))
-    True_J = true_jac_fn(train_list[0])
-    Test_J = true_jac_fn(test_list[0])
+    t = torch.linspace(0, 0.01, 2).cuda()
+    f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
+    torch.cuda.empty_cache()
+
+    true_jac_fn = torch.func.jacrev(f)
+    True_J = torch.zeros(n_train, 3, 3)
+    for j in range(n_train):
+        True_J[j] = true_jac_fn(train_list[0][j])
+    print(True_J[0])
+    print(True_J[10])
+    True_J = True_J.reshape(len(dataloader), dataloader.batch_size, 3, 3).cuda()
     
     print("Beginning training")
-    num_epochs = 10
+    num_epochs = 500
     for epoch in range(num_epochs):
         # with LaunchLogger(
         #         "train",
@@ -112,31 +220,36 @@ def main():
         #         num_mini_batch=len(dataloader),
         #         epoch_alert_freq=10
         #     ) as log:
-        print("epoch: ", epoch)
+        full_loss = 0.0
+        idx = 0
         for data in dataloader:
             optimizer.zero_grad()
             y_true = data[1].to('cuda')
-            print(data[0])
             y_pred = model(data[0].unsqueeze(dim=2).to('cuda'))
 
             # MSE Loss
             loss_mse = criterion(y_pred.squeeze(), y_true)
             time_step = 0.01
-            loss = loss_mse * (1/time_step/time_step)
-            print("loss_mse: ", loss_mse)
+            loss = loss_mse / torch.norm(y_true, p=2)
+            # print("loss_mse: ", loss_mse)
             
             jac = torch.func.jacrev(model)
-            compute_batch_jac = torch.vmap(jac, in_dims=(0))
-            x = data[0].unsqueeze(dim=1).unsqueeze(dim=3).to('cuda')
-            cur_model_J = compute_batch_jac(x)
-            jac_norm_diff = loss_mse(True_J, cur_model_J)
-            print("loss_jac: ", jac_norm_diff)
-            reg_param=500
-            loss += reg_param*jac_norm_diff
-            print("loss: ", loss)
+            # compute_batch_jac = torch.vmap(jac, in_dims=(0))
+            x = data[0].unsqueeze(dim=2).to('cuda')
+            cur_model_J = jac(x)
+            non_zero = torch.nonzero(cur_model_J, as_tuple=True)
+            learned_J = cur_model_J[non_zero].reshape(x.shape[0], 3,3)
+            jac_norm_diff = criterion(True_J[idx], learned_J)
+            # print("loss_jac: ", jac_norm_diff)
+            reg_param = 1.0
+            loss += (jac_norm_diff / torch.norm(True_J[idx], p=2))*reg_param
+            full_loss += loss
+            # print("loss: ", loss)
 
             loss.backward()
             optimizer.step()
+            idx += 1
+        print("epoch: ", epoch, "loss: ", full_loss)
         # log.log_epoch({"Learning Rate": optimizer.param_groups[0]["lr"]})
 
         # save_checkpoint(
@@ -147,5 +260,49 @@ def main():
         #     epoch=epoch
         # )
 
+    print("Creating plot...")
+    phase_path = f"../plot/Phase_plot/FNO_Modulus.png"
+    plot_attractor(model, [lorenz, 3, 0.01], 50, phase_path)
+
+    # compute LE
+    torch.cuda.empty_cache()
+    dim = 3
+    init = torch.randn(dim)
+    true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 20, 0.01), method='rk4', rtol=1e-8)
+
+    init_point = torch.randn(dim)
+    learned_traj = torch.empty_like(true_traj).cuda()
+    learned_traj[0] = init_point
+    for i in range(1, len(learned_traj)):
+        learned_traj[i] = model(learned_traj[i-1].reshape(1, dim, 1).cuda()).reshape(dim,)
+    
+    print("Computing LEs of NN...")
+    learned_LE = lyap_exps([model, dim, 0.01], "lorenz", learned_traj, true_traj.shape[0], batch_size).detach().cpu().numpy()
+    print("Computing true LEs...")
+    True_LE = lyap_exps([lorenz, dim, 0.01], "lorenz", true_traj, true_traj.shape[0], batch_size).detach().cpu().numpy()
+
+    print("Computing rest of metrics...")
+    True_mean = torch.mean(true_traj, dim = 0)
+    Learned_mean = torch.mean(learned_traj, dim = 0)
+    True_var = torch.var(true_traj, dim = 0)
+    Learned_var = torch.var(learned_traj, dim=0)
+
+    logger.info("%s: %s", "Training Loss", str(full_loss))
+    # logger.info("%s: %s", "Test Loss", str(test_loss_hist[-1]))
+    # if args.loss_type == "Jacobian":
+        # logger.info("%s: %s", "Jacobian term Training Loss", str(jac_train_hist[-1]))
+        # logger.info("%s: %s", "Jacobian term Test Loss", str(jac_test_hist[-1]))
+    logger.info("%s: %s", "Learned LE", str(learned_LE))
+    logger.info("%s: %s", "True LE", str(True_LE))
+    logger.info("%s: %s", "Learned mean", str(Learned_mean))
+    logger.info("%s: %s", "True mean", str(True_mean))
+
 if __name__ == "__main__":
-    main()
+
+    start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
+    out_file = os.path.join("../test_result/", f"FNO_JAC_{start_time}.txt")
+    logging.basicConfig(filename=out_file, level=logging.INFO, format="%(message)s")
+    logger = logging.getLogger()
+
+    # call main
+    main(logger)
