@@ -93,20 +93,14 @@ def main(logger):
                 x = traj[0].unsqueeze(dim=2).to('cuda')
                 batchsize = x.shape[0]
                 cur_model_J = jac(x)
-                non_zero = torch.nonzero(cur_model_J, as_tuple=True)
-                Jac[i:i+batchsize] = cur_model_J[non_zero].reshape(batchsize, 3,3)
+                squeezed_J = cur_model_J[:, :, 0, :, :, 0]
+                non_zero_indices = torch.nonzero(squeezed_J)
+                non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
+                learned_J = non_zero_values.reshape(batchsize, 3, 3)
+                Jac[i:i+batchsize] = learned_J
                 i +=batchsize
-                print(i)
-                print(Jac[i:i+batchsize])
+            print(Jac)
 
-            
-            # for j in range(traj_in_batch.shape[0]):
-            #     Jac[j] = torch.autograd.functional.jacobian(f, traj_in_batch[j]).squeeze()
-            #     print(Jac[j])
-            # Not possible due to inplace arithmatic in line 82
-            # Jac = torch.vmap(torch.func.jacrev(f))(traj_in_batch)
-
-        print("Finish")
         Q = torch.rand(dim,dim).to(device)
         eye_cuda = torch.eye(dim).to(device)
         for i in range(iters):
@@ -164,9 +158,9 @@ def main(logger):
         return
 
     print("Creating Dataset")
-    n_train = 8000
-    batch_size = 50
-    dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=1000, n_val=1000, n_trans=0)
+    n_train = 2000
+    batch_size = 20
+    dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
     train_list = [dataset[0], dataset[1]]
     val_list = [dataset[2], dataset[3]]
     test_list = [dataset[4], dataset[5]]
@@ -180,9 +174,9 @@ def main(logger):
     model = FNO(
         in_channels=3,
         out_channels=3,
-        num_fno_modes=2,
+        num_fno_modes=3, # full mode possible..?
         dimension=1,
-        latent_channels=256
+        latent_channels=128
     ).to('cuda')
 
     optimizer = torch.optim.AdamW(
@@ -197,6 +191,7 @@ def main(logger):
 
     ### Training Loop ###
     n_store, k  = 10, 0
+    num_epochs = 1500
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, 0.01, 2).cuda()
@@ -207,19 +202,11 @@ def main(logger):
     True_J = torch.zeros(n_train, 3, 3)
     for j in range(n_train):
         True_J[j] = true_jac_fn(train_list[0][j])
-    print(True_J[0])
-    print(True_J[10])
+    print(True_J)
     True_J = True_J.reshape(len(dataloader), dataloader.batch_size, 3, 3).cuda()
     
     print("Beginning training")
-    num_epochs = 500
     for epoch in range(num_epochs):
-        # with LaunchLogger(
-        #         "train",
-        #         epoch=epoch,
-        #         num_mini_batch=len(dataloader),
-        #         epoch_alert_freq=10
-        #     ) as log:
         full_loss = 0.0
         idx = 0
         for data in dataloader:
@@ -228,37 +215,34 @@ def main(logger):
             y_pred = model(data[0].unsqueeze(dim=2).to('cuda'))
 
             # MSE Loss
-            loss_mse = criterion(y_pred.squeeze(), y_true)
-            time_step = 0.01
+            loss_mse = criterion(y_pred.view(batch_size, -1), y_true.view(batch_size, -1))
             loss = loss_mse / torch.norm(y_true, p=2)
-            # print("loss_mse: ", loss_mse)
             
-            jac = torch.func.jacrev(model)
-            # compute_batch_jac = torch.vmap(jac, in_dims=(0))
+            
+            '''jac = torch.func.jacrev(model)
             x = data[0].unsqueeze(dim=2).to('cuda')
             cur_model_J = jac(x)
-            non_zero = torch.nonzero(cur_model_J, as_tuple=True)
-            learned_J = cur_model_J[non_zero].reshape(x.shape[0], 3,3)
+            squeezed_J = cur_model_J[:, :, 0, :, :, 0]
+            non_zero_indices = torch.nonzero(squeezed_J)
+            non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
+            learned_J = non_zero_values.reshape(x.shape[0], 3, 3)
+            if epoch % 100 == 0:
+                print(learned_J[5, 1])
+                print(True_J[idx][5, 1], "\n")
+
+            # jac_norm_diff = criterion(torch.flatten(True_J[idx], start_dim=2), torch.flatten(learned_J, start_dim=2))
             jac_norm_diff = criterion(True_J[idx], learned_J)
-            # print("loss_jac: ", jac_norm_diff)
-            reg_param = 1.0
-            loss += (jac_norm_diff / torch.norm(True_J[idx], p=2))*reg_param
+            reg_param = 2.0
+            loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param'''
+                        
+
             full_loss += loss
-            # print("loss: ", loss)
-
-            loss.backward()
-            optimizer.step()
             idx += 1
-        print("epoch: ", epoch, "loss: ", full_loss)
-        # log.log_epoch({"Learning Rate": optimizer.param_groups[0]["lr"]})
+            
 
-        # save_checkpoint(
-        #     "./checkpoints",
-        #     models=[model],
-        #     optimizer=optimizer,
-        #     scheduler=scheduler,
-        #     epoch=epoch
-        # )
+        full_loss.backward()
+        optimizer.step()
+        print("epoch: ", epoch, "loss: ", full_loss)
 
     print("Creating plot...")
     phase_path = f"../plot/Phase_plot/FNO_Modulus.png"
@@ -288,10 +272,6 @@ def main(logger):
     Learned_var = torch.var(learned_traj, dim=0)
 
     logger.info("%s: %s", "Training Loss", str(full_loss))
-    # logger.info("%s: %s", "Test Loss", str(test_loss_hist[-1]))
-    # if args.loss_type == "Jacobian":
-        # logger.info("%s: %s", "Jacobian term Training Loss", str(jac_train_hist[-1]))
-        # logger.info("%s: %s", "Jacobian term Test Loss", str(jac_test_hist[-1]))
     logger.info("%s: %s", "Learned LE", str(learned_LE))
     logger.info("%s: %s", "True LE", str(True_LE))
     logger.info("%s: %s", "Learned mean", str(Learned_mean))

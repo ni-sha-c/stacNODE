@@ -1,0 +1,5 @@
+Training Loss: tensor(0.0058, device='cuda:0', grad_fn=<AddBackward0>)
+Learned LE: [ 1.9930365e-02 -6.5175945e-01 -2.9265463e+01]
+True LE: [  0.2643227   0.1528173 -14.2661495]
+Learned mean: tensor([ 5.8544,  5.2995, 26.2838], device='cuda:0', grad_fn=<MeanBackward1>)
+True mean: tensor([-6.1891, -6.1432, 25.4114])
