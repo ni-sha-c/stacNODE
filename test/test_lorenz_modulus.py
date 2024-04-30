@@ -16,8 +16,11 @@ from mpl_toolkits.mplot3d import axes3d
 from torchsummary import summary
 
 
+# mpirun -n 2 python test_....
+
 from torch.utils.data import DataLoader, TensorDataset
 from modulus.models.fno import FNO
+from modulus.models.mlp.fully_connected import FullyConnected
 # from modulus.launch.logging import LaunchLogger
 # from modulus.launch.utils.checkpoint import save_checkpoint
 
@@ -186,7 +189,7 @@ def main(logger, loss_type):
         return
 
     print("Creating Dataset")
-    n_train = 2000
+    n_train = 4000
     batch_size = 20
     dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
     train_list = [dataset[0], dataset[1]]
@@ -203,9 +206,12 @@ def main(logger, loss_type):
         in_channels=3,
         out_channels=3,
         num_fno_modes=3, # full mode possible..?
+        padding=3,
         dimension=1,
         latent_channels=128
     ).to('cuda')
+
+    mlp_model = FullyConnected(in_features=3, out_features=3).to('cuda')
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -218,11 +224,11 @@ def main(logger, loss_type):
 
     ### Training Loop ###
     n_store, k  = 100, 0
-    num_epochs = 2000
+    num_epochs = 100
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, 0.01, 2).cuda()
-    threshold = 0.003
+    threshold = 0.002
     f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
     torch.cuda.empty_cache()
     timer = Timer()
@@ -230,11 +236,13 @@ def main(logger, loss_type):
 
     if loss_type == "JAC":
         true_jac_fn = torch.func.jacrev(f)
-        True_J = torch.zeros(n_train, 3, 3)
+        True_j = torch.zeros(n_train, 3, 3)
         for j in range(n_train):
-            True_J[j] = true_jac_fn(train_list[0][j])
-        print(True_J)
-        True_J = True_J.reshape(len(dataloader), dataloader.batch_size, 3, 3).cuda()
+            True_j[j] = true_jac_fn(train_list[0][j])
+        True_J = True_j.reshape(len(dataloader), dataloader.batch_size, 3, 3).cuda()
+
+        print("Sanity Check: \n", True_j[0], True_j[batch_size], True_j[2*batch_size], True_j[3*batch_size])
+        print("True: ", True_J[0:4, 0])
     
     print("Beginning training")
     for epoch in range(num_epochs):
@@ -253,15 +261,14 @@ def main(logger, loss_type):
             if loss_type == "JAC":
                 with timer:
                     jac = torch.func.jacrev(model)
-                    x = data[0].unsqueeze(dim=2).to('cuda')
-                    cur_model_J = jac(x)
-                    squeezed_J = cur_model_J[:, :, 0, :, :, 0]
-                    non_zero_indices = torch.nonzero(squeezed_J)
-                    non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
-                    learned_J = non_zero_values.reshape(x.shape[0], 3, 3)
-                    # if epoch % 100 == 0:
-                    #     print(learned_J[5, 1])
-                    #     print(True_J[idx][5, 1], "\n")
+                    learned_J = torch.zeros(batch_size, 3, 3).cuda()
+                    # [20, 3, 1] -> jacrev(model())
+                    for b in range(batch_size):
+                        x = data[0].unsqueeze(dim=2).to('cuda')
+                        x = x[b].unsqueeze(dim=0)
+                        cur_model_J = jac(x)
+                        learned_J[b] = cur_model_J.squeeze()
+
                     jac_norm_diff = criterion(True_J[idx], learned_J)
                     reg_param = 2.0
                     loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param
@@ -280,6 +287,8 @@ def main(logger, loss_type):
 
     print("Finished Computing")
     model_size = model_size(model)
+    # Save the model
+    torch.save(model.state_dict(), f"../test_result/best_model_{loss_type}.pth")
 
     if loss_type == "JAC":
         with open('../test_result/Time/Modulus_FNO_elapsed_times_Jacobian.csv', 'w', newline='') as csvfile:
