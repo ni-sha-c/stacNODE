@@ -222,7 +222,7 @@ def main(logger, loss_type):
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, 0.01, 2).cuda()
-    threshold = 0.004
+    threshold = 0.003
     f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
     torch.cuda.empty_cache()
     timer = Timer()
