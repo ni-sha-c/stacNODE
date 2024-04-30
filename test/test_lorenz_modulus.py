@@ -9,15 +9,31 @@ import argparse
 import json
 import logging
 import os
+import csv
 import math
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
+from torchsummary import summary
 
 
 from torch.utils.data import DataLoader, TensorDataset
 from modulus.models.fno import FNO
 # from modulus.launch.logging import LaunchLogger
 # from modulus.launch.utils.checkpoint import save_checkpoint
+
+class Timer:
+    def __init__(self):
+        self.elapsed_times = []
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end_time = time.time()
+        self.elapsed_time = self.end_time - self.start_time
+        self.elapsed_times.append(self.elapsed_time)
+        return False
 
 def main(logger, loss_type):
 
@@ -111,6 +127,18 @@ def main(logger, loss_type):
             LE += torch.log(abs(torch.diag(R)))
         return LE/iters/time_step
 
+    def model_size(model):
+        # Adapted from https://discuss.pytorch.org/t/finding-model-size/130275/11
+        param_size = 0
+        for param in model.parameters():
+            param_size += param.nelement() * param.element_size()
+        buffer_size = 0
+        for buffer in model.buffers():
+            buffer_size += buffer.nelement() * buffer.element_size()
+
+        size_all_mb = (param_size + buffer_size) / 1024**2
+        print('model size: {:.3f}MB'.format(size_all_mb))
+        return size_all_mb
 
     def plot_attractor(model, dyn_info, time, path):
         # generate true orbit and learned orbit
@@ -159,7 +187,7 @@ def main(logger, loss_type):
 
     print("Creating Dataset")
     n_train = 2000
-    batch_size = 10
+    batch_size = 20
     dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
     train_list = [dataset[0], dataset[1]]
     val_list = [dataset[2], dataset[3]]
@@ -186,27 +214,31 @@ def main(logger, loss_type):
     )
 
     criterion = torch.nn.MSELoss()
-
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=1e-3)
 
     ### Training Loop ###
     n_store, k  = 100, 0
-    num_epochs = 3000
+    num_epochs = 2000
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, 0.01, 2).cuda()
+    threshold = 0.004
     f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
     torch.cuda.empty_cache()
+    timer = Timer()
+    elapsed_time_train = []
 
-    true_jac_fn = torch.func.jacrev(f)
-    True_J = torch.zeros(n_train, 3, 3)
-    for j in range(n_train):
-        True_J[j] = true_jac_fn(train_list[0][j])
-    print(True_J)
-    True_J = True_J.reshape(len(dataloader), dataloader.batch_size, 3, 3).cuda()
+    if loss_type == "JAC":
+        true_jac_fn = torch.func.jacrev(f)
+        True_J = torch.zeros(n_train, 3, 3)
+        for j in range(n_train):
+            True_J[j] = true_jac_fn(train_list[0][j])
+        print(True_J)
+        True_J = True_J.reshape(len(dataloader), dataloader.batch_size, 3, 3).cuda()
     
     print("Beginning training")
     for epoch in range(num_epochs):
+        start_time = time.time()
         full_loss = 0.0
         idx = 0
         for data in dataloader:
@@ -219,33 +251,51 @@ def main(logger, loss_type):
             loss = loss_mse / torch.norm(y_true, p=2)
             
             if loss_type == "JAC":
-                jac = torch.func.jacrev(model)
-                x = data[0].unsqueeze(dim=2).to('cuda')
-                cur_model_J = jac(x)
-                squeezed_J = cur_model_J[:, :, 0, :, :, 0]
-                non_zero_indices = torch.nonzero(squeezed_J)
-                non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
-                learned_J = non_zero_values.reshape(x.shape[0], 3, 3)
-                if epoch % 100 == 0:
-                    print(learned_J[5, 1])
-                    print(True_J[idx][5, 1], "\n")
-
-                # jac_norm_diff = criterion(torch.flatten(True_J[idx], start_dim=2), torch.flatten(learned_J, start_dim=2))
-                jac_norm_diff = criterion(True_J[idx], learned_J)
-                reg_param = 2.0
-                loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param
+                with timer:
+                    jac = torch.func.jacrev(model)
+                    x = data[0].unsqueeze(dim=2).to('cuda')
+                    cur_model_J = jac(x)
+                    squeezed_J = cur_model_J[:, :, 0, :, :, 0]
+                    non_zero_indices = torch.nonzero(squeezed_J)
+                    non_zero_values = squeezed_J[non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2], non_zero_indices[:, 3]]
+                    learned_J = non_zero_values.reshape(x.shape[0], 3, 3)
+                    # if epoch % 100 == 0:
+                    #     print(learned_J[5, 1])
+                    #     print(True_J[idx][5, 1], "\n")
+                    jac_norm_diff = criterion(True_J[idx], learned_J)
+                    reg_param = 2.0
+                    loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param
                         
-
             full_loss += loss
             idx += 1
+            end_time = time.time()  
+            elapsed_time_train.append(end_time - start_time)
             
-
         full_loss.backward()
         optimizer.step()
         print("epoch: ", epoch, "loss: ", full_loss)
+        if full_loss < threshold:
+            print("Stopping early as the loss is below the threshold.")
+            break
+
+    print("Finished Computing")
+    model_size = model_size(model)
+
+    if loss_type == "JAC":
+        with open('../test_result/Time/Modulus_FNO_elapsed_times_Jacobian.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Epoch', 'Elapsed Time (seconds)'])
+            for epoch, elapsed_time in enumerate(timer.elapsed_times, 1):
+                writer.writerow([epoch, elapsed_time])
+    with open('../test_result/Time/Modulus_FNO_epoch_times.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Epoch', 'Elapsed Time (seconds)'])
+        for epoch, elapsed_time in enumerate(elapsed_time_train, 1):
+            writer.writerow([epoch, elapsed_time])
+    
 
     print("Creating plot...")
-    phase_path = f"../plot/Phase_plot/FNO_Modulus.png"
+    phase_path = f"../plot/Phase_plot/FNO_Modulus_{loss_type}.png"
     plot_attractor(model, [lorenz, 3, 0.01], 50, phase_path)
 
     # compute LE
@@ -271,6 +321,7 @@ def main(logger, loss_type):
     True_var = torch.var(true_traj, dim = 0)
     Learned_var = torch.var(learned_traj, dim=0)
 
+    logger.info("%s: %s", "Model Size", str(model_size))
     logger.info("%s: %s", "Loss Type", str(loss_type))
     logger.info("%s: %s", "Training Loss", str(full_loss))
     logger.info("%s: %s", "Learned LE", str(learned_LE))

@@ -1,6 +1,6 @@
 JAC
 num_mode=3
-batch_size = 10?
+batch_size = 10
 epoch = 2000
 
 Training Loss: tensor(0.0040, device='cuda:0', grad_fn=<AddBackward0>)
