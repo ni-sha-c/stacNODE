@@ -190,7 +190,7 @@ def main(logger, loss_type):
 
     print("Creating Dataset")
     n_train = 4000
-    batch_size = 20
+    batch_size = 50
     dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
     train_list = [dataset[0], dataset[1]]
     val_list = [dataset[2], dataset[3]]
@@ -206,12 +206,10 @@ def main(logger, loss_type):
         in_channels=3,
         out_channels=3,
         num_fno_modes=3, # full mode possible..?
-        padding=3,
+        padding=4,
         dimension=1,
         latent_channels=128
     ).to('cuda')
-
-    mlp_model = FullyConnected(in_features=3, out_features=3).to('cuda')
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -224,11 +222,11 @@ def main(logger, loss_type):
 
     ### Training Loop ###
     n_store, k  = 100, 0
-    num_epochs = 100
+    num_epochs = 10000
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, 0.01, 2).cuda()
-    threshold = 0.002
+    threshold = 0.001
     f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
     torch.cuda.empty_cache()
     timer = Timer()
@@ -261,13 +259,13 @@ def main(logger, loss_type):
             if loss_type == "JAC":
                 with timer:
                     jac = torch.func.jacrev(model)
-                    learned_J = torch.zeros(batch_size, 3, 3).cuda()
-                    # [20, 3, 1] -> jacrev(model())
-                    for b in range(batch_size):
-                        x = data[0].unsqueeze(dim=2).to('cuda')
-                        x = x[b].unsqueeze(dim=0)
-                        cur_model_J = jac(x)
-                        learned_J[b] = cur_model_J.squeeze()
+                    x = data[0].unsqueeze(dim=2).to('cuda')
+                    cur_model_J = jac(x)
+                    squeezed_J = cur_model_J[:, :, 0, :, :, 0]
+                    #print("non-zero element", torch.count_nonzero(squeezed_J)) -> 180 -> 20 x 3 x 3 not 3600 with would mean that it is actually computing 20 x 20 x 3 x 3
+                    # print("example", squeezed_J[:, :, 0, :], squeezed_J[0, :, 0, :], squeezed_J[:, :, 0, :].shape)
+                    learned_J = [squeezed_J[in_out_pair, :, in_out_pair, :] for in_out_pair in range(batch_size)]
+                    learned_J = torch.stack(learned_J, dim=0).cuda()
 
                     jac_norm_diff = criterion(True_J[idx], learned_J)
                     reg_param = 2.0
@@ -311,7 +309,7 @@ def main(logger, loss_type):
     torch.cuda.empty_cache()
     dim = 3
     init = torch.randn(dim)
-    true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 20, 0.01), method='rk4', rtol=1e-8)
+    true_traj = torchdiffeq.odeint(lorenz, torch.randn(dim), torch.arange(0, 50, 0.01), method='rk4', rtol=1e-8)
 
     init_point = torch.randn(dim)
     learned_traj = torch.empty_like(true_traj).cuda()
