@@ -13,8 +13,6 @@ import csv
 import math
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
-from torchsummary import summary
-
 
 # mpirun -n 2 python test_....
 
@@ -189,7 +187,7 @@ def main(logger, loss_type):
         return
 
     print("Creating Dataset")
-    n_train = 4000
+    n_train = 3000
     batch_size = 50
     dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
     train_list = [dataset[0], dataset[1]]
@@ -205,7 +203,7 @@ def main(logger, loss_type):
     model = FNO(
         in_channels=3,
         out_channels=3,
-        num_fno_modes=3, # full mode possible..?
+        num_fno_modes=3,
         padding=4,
         dimension=1,
         latent_channels=128
@@ -222,10 +220,11 @@ def main(logger, loss_type):
 
     ### Training Loop ###
     n_store, k  = 100, 0
-    num_epochs = 10000
+    num_epochs = 2000
+    time_step = 0.01
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
-    t = torch.linspace(0, 0.01, 2).cuda()
+    t = torch.linspace(0, time_step, 2).cuda()
     threshold = 0.001
     f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
     torch.cuda.empty_cache()
@@ -254,7 +253,7 @@ def main(logger, loss_type):
 
             # MSE Loss
             loss_mse = criterion(y_pred.view(batch_size, -1), y_true.view(batch_size, -1))
-            loss = loss_mse / torch.norm(y_true, p=2)
+            loss = loss_mse / torch.norm(y_true, p=2) * (1/time_step/time_step)
             
             if loss_type == "JAC":
                 with timer:
@@ -268,7 +267,7 @@ def main(logger, loss_type):
                     learned_J = torch.stack(learned_J, dim=0).cuda()
 
                     jac_norm_diff = criterion(True_J[idx], learned_J)
-                    reg_param = 2.0
+                    reg_param = 500.0
                     loss += (jac_norm_diff / torch.norm(True_J[idx]))*reg_param
                         
             full_loss += loss
@@ -330,6 +329,7 @@ def main(logger, loss_type):
 
     logger.info("%s: %s", "Model Size", str(model_size))
     logger.info("%s: %s", "Loss Type", str(loss_type))
+    logger.info("%s: %s", "Batch Size", str(batch_size))
     logger.info("%s: %s", "Training Loss", str(full_loss))
     logger.info("%s: %s", "Learned LE", str(learned_LE))
     logger.info("%s: %s", "True LE", str(True_LE))

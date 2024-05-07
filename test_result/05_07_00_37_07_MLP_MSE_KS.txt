@@ -1,0 +1,224 @@
+time_step: 0.25
+lr: 0.001
+weight_decay: 0.0001
+num_epoch: 100
+num_train: 3000
+num_test: 2000
+num_val: 0
+num_trans: 0
+loss_type: MSE
+dyn_sys: KS
+model_type: MLP
+s: 0.5
+n_hidden: 256
+n_layers: 5
+reg_param: 0.8
+threshold: 1e-07
+optim_name: AdamW
+Epoch: 0 Train: 0.00001 Test: 0.10574
+Epoch 0: New minimal relative error: 0.11%, model saved.
+Epoch: 1 Train: 0.00001 Test: 0.10564
+Epoch 1: New minimal relative error: 0.11%, model saved.
+Epoch: 2 Train: 0.00001 Test: 0.10556
+Epoch 2: New minimal relative error: 0.11%, model saved.
+Epoch: 3 Train: 0.00001 Test: 0.10548
+Epoch 3: New minimal relative error: 0.11%, model saved.
+Epoch: 4 Train: 0.00001 Test: 0.10540
+Epoch 4: New minimal relative error: 0.11%, model saved.
+Epoch: 5 Train: 0.00001 Test: 0.10533
+Epoch 5: New minimal relative error: 0.11%, model saved.
+Epoch: 6 Train: 0.00001 Test: 0.10527
+Epoch 6: New minimal relative error: 0.11%, model saved.
+Epoch: 7 Train: 0.00001 Test: 0.10521
+Epoch 7: New minimal relative error: 0.11%, model saved.
+Epoch: 8 Train: 0.00001 Test: 0.10516
+Epoch 8: New minimal relative error: 0.11%, model saved.
+Epoch: 9 Train: 0.00001 Test: 0.10511
+Epoch 9: New minimal relative error: 0.11%, model saved.
+Epoch: 10 Train: 0.00001 Test: 0.10506
+Epoch 10: New minimal relative error: 0.11%, model saved.
+Epoch: 11 Train: 0.00001 Test: 0.10502
+Epoch 11: New minimal relative error: 0.11%, model saved.
+Epoch: 12 Train: 0.00001 Test: 0.10498
+Epoch 12: New minimal relative error: 0.10%, model saved.
+Epoch: 13 Train: 0.00001 Test: 0.10494
+Epoch 13: New minimal relative error: 0.10%, model saved.
+Epoch: 14 Train: 0.00001 Test: 0.10490
+Epoch 14: New minimal relative error: 0.10%, model saved.
+Epoch: 15 Train: 0.00001 Test: 0.10487
+Epoch 15: New minimal relative error: 0.10%, model saved.
+Epoch: 16 Train: 0.00001 Test: 0.10484
+Epoch 16: New minimal relative error: 0.10%, model saved.
+Epoch: 17 Train: 0.00001 Test: 0.10482
+Epoch 17: New minimal relative error: 0.10%, model saved.
+Epoch: 18 Train: 0.00001 Test: 0.10479
+Epoch 18: New minimal relative error: 0.10%, model saved.
+Epoch: 19 Train: 0.00001 Test: 0.10477
+Epoch 19: New minimal relative error: 0.10%, model saved.
+Epoch: 20 Train: 0.00001 Test: 0.10474
+Epoch 20: New minimal relative error: 0.10%, model saved.
+Epoch: 21 Train: 0.00001 Test: 0.10472
+Epoch 21: New minimal relative error: 0.10%, model saved.
+Epoch: 22 Train: 0.00001 Test: 0.10471
+Epoch 22: New minimal relative error: 0.10%, model saved.
+Epoch: 23 Train: 0.00001 Test: 0.10469
+Epoch 23: New minimal relative error: 0.10%, model saved.
+Epoch: 24 Train: 0.00001 Test: 0.10467
+Epoch 24: New minimal relative error: 0.10%, model saved.
+Epoch: 25 Train: 0.00001 Test: 0.10466
+Epoch 25: New minimal relative error: 0.10%, model saved.
+Epoch: 26 Train: 0.00001 Test: 0.10464
+Epoch 26: New minimal relative error: 0.10%, model saved.
+Epoch: 27 Train: 0.00001 Test: 0.10463
+Epoch 27: New minimal relative error: 0.10%, model saved.
+Epoch: 28 Train: 0.00001 Test: 0.10462
+Epoch 28: New minimal relative error: 0.10%, model saved.
+Epoch: 29 Train: 0.00001 Test: 0.10461
+Epoch 29: New minimal relative error: 0.10%, model saved.
+Epoch: 30 Train: 0.00001 Test: 0.10459
+Epoch 30: New minimal relative error: 0.10%, model saved.
+Epoch: 31 Train: 0.00001 Test: 0.10458
+Epoch 31: New minimal relative error: 0.10%, model saved.
+Epoch: 32 Train: 0.00001 Test: 0.10458
+Epoch 32: New minimal relative error: 0.10%, model saved.
+Epoch: 33 Train: 0.00001 Test: 0.10457
+Epoch 33: New minimal relative error: 0.10%, model saved.
+Epoch: 34 Train: 0.00001 Test: 0.10456
+Epoch 34: New minimal relative error: 0.10%, model saved.
+Epoch: 35 Train: 0.00001 Test: 0.10455
+Epoch 35: New minimal relative error: 0.10%, model saved.
+Epoch: 36 Train: 0.00001 Test: 0.10454
+Epoch 36: New minimal relative error: 0.10%, model saved.
+Epoch: 37 Train: 0.00001 Test: 0.10454
+Epoch 37: New minimal relative error: 0.10%, model saved.
+Epoch: 38 Train: 0.00001 Test: 0.10453
+Epoch 38: New minimal relative error: 0.10%, model saved.
+Epoch: 39 Train: 0.00001 Test: 0.10452
+Epoch 39: New minimal relative error: 0.10%, model saved.
+Epoch: 40 Train: 0.00001 Test: 0.10452
+Epoch 40: New minimal relative error: 0.10%, model saved.
+Epoch: 41 Train: 0.00001 Test: 0.10451
+Epoch 41: New minimal relative error: 0.10%, model saved.
+Epoch: 42 Train: 0.00001 Test: 0.10451
+Epoch 42: New minimal relative error: 0.10%, model saved.
+Epoch: 43 Train: 0.00001 Test: 0.10450
+Epoch 43: New minimal relative error: 0.10%, model saved.
+Epoch: 44 Train: 0.00001 Test: 0.10450
+Epoch 44: New minimal relative error: 0.10%, model saved.
+Epoch: 45 Train: 0.00001 Test: 0.10449
+Epoch 45: New minimal relative error: 0.10%, model saved.
+Epoch: 46 Train: 0.00001 Test: 0.10449
+Epoch 46: New minimal relative error: 0.10%, model saved.
+Epoch: 47 Train: 0.00001 Test: 0.10449
+Epoch 47: New minimal relative error: 0.10%, model saved.
+Epoch: 48 Train: 0.00001 Test: 0.10448
+Epoch 48: New minimal relative error: 0.10%, model saved.
+Epoch: 49 Train: 0.00001 Test: 0.10448
+Epoch 49: New minimal relative error: 0.10%, model saved.
+Epoch: 50 Train: 0.00001 Test: 0.10448
+Epoch 50: New minimal relative error: 0.10%, model saved.
+Epoch: 51 Train: 0.00001 Test: 0.10447
+Epoch 51: New minimal relative error: 0.10%, model saved.
+Epoch: 52 Train: 0.00001 Test: 0.10447
+Epoch 52: New minimal relative error: 0.10%, model saved.
+Epoch: 53 Train: 0.00001 Test: 0.10447
+Epoch 53: New minimal relative error: 0.10%, model saved.
+Epoch: 54 Train: 0.00001 Test: 0.10447
+Epoch 54: New minimal relative error: 0.10%, model saved.
+Epoch: 55 Train: 0.00001 Test: 0.10446
+Epoch 55: New minimal relative error: 0.10%, model saved.
+Epoch: 56 Train: 0.00001 Test: 0.10446
+Epoch 56: New minimal relative error: 0.10%, model saved.
+Epoch: 57 Train: 0.00001 Test: 0.10446
+Epoch 57: New minimal relative error: 0.10%, model saved.
+Epoch: 58 Train: 0.00001 Test: 0.10446
+Epoch 58: New minimal relative error: 0.10%, model saved.
+Epoch: 59 Train: 0.00001 Test: 0.10445
+Epoch 59: New minimal relative error: 0.10%, model saved.
+Epoch: 60 Train: 0.00001 Test: 0.10445
+Epoch 60: New minimal relative error: 0.10%, model saved.
+Epoch: 61 Train: 0.00001 Test: 0.10445
+Epoch 61: New minimal relative error: 0.10%, model saved.
+Epoch: 62 Train: 0.00001 Test: 0.10445
+Epoch 62: New minimal relative error: 0.10%, model saved.
+Epoch: 63 Train: 0.00001 Test: 0.10445
+Epoch 63: New minimal relative error: 0.10%, model saved.
+Epoch: 64 Train: 0.00001 Test: 0.10445
+Epoch 64: New minimal relative error: 0.10%, model saved.
+Epoch: 65 Train: 0.00001 Test: 0.10444
+Epoch 65: New minimal relative error: 0.10%, model saved.
+Epoch: 66 Train: 0.00001 Test: 0.10444
+Epoch 66: New minimal relative error: 0.10%, model saved.
+Epoch: 67 Train: 0.00001 Test: 0.10444
+Epoch 67: New minimal relative error: 0.10%, model saved.
+Epoch: 68 Train: 0.00001 Test: 0.10444
+Epoch 68: New minimal relative error: 0.10%, model saved.
+Epoch: 69 Train: 0.00001 Test: 0.10444
+Epoch 69: New minimal relative error: 0.10%, model saved.
+Epoch: 70 Train: 0.00001 Test: 0.10444
+Epoch 70: New minimal relative error: 0.10%, model saved.
+Epoch: 71 Train: 0.00001 Test: 0.10444
+Epoch 71: New minimal relative error: 0.10%, model saved.
+Epoch: 72 Train: 0.00001 Test: 0.10443
+Epoch 72: New minimal relative error: 0.10%, model saved.
+Epoch: 73 Train: 0.00001 Test: 0.10443
+Epoch 73: New minimal relative error: 0.10%, model saved.
+Epoch: 74 Train: 0.00001 Test: 0.10443
+Epoch 74: New minimal relative error: 0.10%, model saved.
+Epoch: 75 Train: 0.00001 Test: 0.10443
+Epoch 75: New minimal relative error: 0.10%, model saved.
+Epoch: 76 Train: 0.00001 Test: 0.10443
+Epoch 76: New minimal relative error: 0.10%, model saved.
+Epoch: 77 Train: 0.00001 Test: 0.10443
+Epoch 77: New minimal relative error: 0.10%, model saved.
+Epoch: 78 Train: 0.00001 Test: 0.10443
+Epoch 78: New minimal relative error: 0.10%, model saved.
+Epoch: 79 Train: 0.00001 Test: 0.10443
+Epoch 79: New minimal relative error: 0.10%, model saved.
+Epoch: 80 Train: 0.00001 Test: 0.10443
+Epoch 80: New minimal relative error: 0.10%, model saved.
+Epoch: 81 Train: 0.00001 Test: 0.10442
+Epoch 81: New minimal relative error: 0.10%, model saved.
+Epoch: 82 Train: 0.00001 Test: 0.10442
+Epoch 82: New minimal relative error: 0.10%, model saved.
+Epoch: 83 Train: 0.00001 Test: 0.10442
+Epoch 83: New minimal relative error: 0.10%, model saved.
+Epoch: 84 Train: 0.00001 Test: 0.10442
+Epoch 84: New minimal relative error: 0.10%, model saved.
+Epoch: 85 Train: 0.00001 Test: 0.10442
+Epoch 85: New minimal relative error: 0.10%, model saved.
+Epoch: 86 Train: 0.00001 Test: 0.10442
+Epoch 86: New minimal relative error: 0.10%, model saved.
+Epoch: 87 Train: 0.00001 Test: 0.10442
+Epoch 87: New minimal relative error: 0.10%, model saved.
+Epoch: 88 Train: 0.00001 Test: 0.10442
+Epoch 88: New minimal relative error: 0.10%, model saved.
+Epoch: 89 Train: 0.00001 Test: 0.10442
+Epoch 89: New minimal relative error: 0.10%, model saved.
+Epoch: 90 Train: 0.00001 Test: 0.10442
+Epoch 90: New minimal relative error: 0.10%, model saved.
+Epoch: 91 Train: 0.00001 Test: 0.10442
+Epoch 91: New minimal relative error: 0.10%, model saved.
+Epoch: 92 Train: 0.00001 Test: 0.10442
+Epoch 92: New minimal relative error: 0.10%, model saved.
+Epoch: 93 Train: 0.00001 Test: 0.10442
+Epoch 93: New minimal relative error: 0.10%, model saved.
+Epoch: 94 Train: 0.00001 Test: 0.10442
+Epoch 94: New minimal relative error: 0.10%, model saved.
+Epoch: 95 Train: 0.00001 Test: 0.10441
+Epoch 95: New minimal relative error: 0.10%, model saved.
+Epoch: 96 Train: 0.00001 Test: 0.10441
+Epoch 96: New minimal relative error: 0.10%, model saved.
+Epoch: 97 Train: 0.00001 Test: 0.10441
+Epoch 97: New minimal relative error: 0.10%, model saved.
+Epoch: 98 Train: 0.00001 Test: 0.10441
+Epoch 98: New minimal relative error: 0.10%, model saved.
+Epoch: 99 Train: 0.00001 Test: 0.10441
+Epoch 99: New minimal relative error: 0.10%, model saved.
+Training Loss: tensor(0.)
+Test Loss: tensor(1.8793e-11)
+Learned LE: [0.00263804 0.0028276  0.00290676 0.00182666 0.0020149  0.00190218
+ 0.00172116 0.00203026 0.00113089 0.0013269  0.0013132  0.00144435
+ 0.00132191 0.00107368 0.00096972]
+True LE: [-inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf
+ -inf]

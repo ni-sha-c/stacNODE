@@ -1,0 +1,106 @@
+05_06_01_41_37
+
+time_step: 0.01
+lr: 0.001
+weight_decay: 0.0001
+num_epoch: 20000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: MSE
+dyn_sys: lorenz
+model_type: MLP
+s: 0.5
+n_hidden: 256
+n_layers: 5
+reg_param: 1000
+optim_name: AdamW
+Epoch: 0 Train: 1.38889 Test: 4089.55957
+Epoch 0: New minimal relative error: 99.95%, model saved.
+Epoch: 200 Train: 0.00363 Test: 12.02579
+Epoch 200: New minimal relative error: 5.18%, model saved.
+Epoch: 400 Train: 0.00123 Test: 5.24760
+Epoch 400: New minimal relative error: 3.45%, model saved.
+Epoch: 600 Train: 0.01971 Test: 33.37936
+Epoch: 800 Train: 0.00048 Test: 2.85060
+Epoch: 1000 Train: 0.00097 Test: 5.54079
+Epoch: 1200 Train: 0.00022 Test: 2.35507
+Epoch: 1400 Train: 0.00063 Test: 2.25494
+Epoch 1400: New minimal relative error: 2.08%, model saved.
+Epoch: 1600 Train: 0.00176 Test: 9.27091
+Epoch: 1800 Train: 0.00017 Test: 1.77931
+Epoch: 2000 Train: 0.00073 Test: 3.69896
+Epoch: 2200 Train: 0.00031 Test: 2.29798
+Epoch: 2400 Train: 0.00168 Test: 7.07191
+Epoch: 2600 Train: 0.00065 Test: 2.61923
+Epoch: 2800 Train: 0.00248 Test: 10.02235
+Epoch: 3000 Train: 0.00061 Test: 2.89468
+Epoch: 3200 Train: 0.00101 Test: 2.01840
+Epoch: 3400 Train: 0.00046 Test: 1.78852
+Epoch: 3600 Train: 0.00052 Test: 2.37177
+Epoch: 3800 Train: 0.00023 Test: 1.76839
+Epoch: 4000 Train: 0.00053 Test: 2.65645
+Epoch: 4200 Train: 0.00013 Test: 1.51327
+Epoch 4200: New minimal relative error: 1.78%, model saved.
+Epoch: 4400 Train: 0.00003 Test: 1.17880
+Epoch 4400: New minimal relative error: 1.48%, model saved.
+Epoch: 4600 Train: 0.00009 Test: 1.41441
+Epoch: 4800 Train: 0.00002 Test: 1.12169
+Epoch 4800: New minimal relative error: 0.79%, model saved.
+Epoch: 5000 Train: 0.00056 Test: 3.03877
+Epoch: 5200 Train: 0.00083 Test: 2.51482
+Epoch: 5400 Train: 0.00073 Test: 3.07644
+Epoch: 5600 Train: 0.00051 Test: 2.17363
+Epoch: 5800 Train: 0.00010 Test: 1.37346
+Epoch: 6000 Train: 0.00031 Test: 1.92970
+Epoch: 6200 Train: 0.00007 Test: 1.36073
+Epoch: 6400 Train: 0.00018 Test: 1.65401
+Epoch: 6600 Train: 0.00056 Test: 2.90895
+Epoch: 6800 Train: 0.00009 Test: 1.24111
+Epoch: 7000 Train: 0.00004 Test: 1.25864
+Epoch: 7200 Train: 0.00016 Test: 1.51575
+Epoch: 7400 Train: 0.00005 Test: 1.28306
+Epoch: 7600 Train: 0.00021 Test: 1.51746
+Epoch: 7800 Train: 0.00003 Test: 1.30388
+Epoch: 8000 Train: 0.00003 Test: 1.30432
+Epoch: 8200 Train: 0.00005 Test: 1.37079
+Epoch: 8400 Train: 0.00002 Test: 1.36363
+Epoch: 8600 Train: 0.00025 Test: 1.87708
+Epoch: 8800 Train: 0.00001 Test: 1.40220
+Epoch 8800: New minimal relative error: 0.56%, model saved.
+Epoch: 9000 Train: 0.00004 Test: 1.41560
+Epoch: 9200 Train: 0.00006 Test: 1.60134
+Epoch: 9400 Train: 0.00002 Test: 1.53884
+Epoch: 9600 Train: 0.00005 Test: 1.66442
+Epoch: 9800 Train: 0.00014 Test: 1.81133
+Epoch: 10000 Train: 0.00003 Test: 1.61153
+Epoch: 10200 Train: 0.00024 Test: 2.27559
+Epoch: 10400 Train: 0.00011 Test: 1.92795
+Epoch: 10600 Train: 0.00001 Test: 1.66869
+Epoch: 10800 Train: 0.00004 Test: 1.77387
+Epoch: 11000 Train: 0.00001 Test: 1.71974
+Epoch: 11200 Train: 0.00006 Test: 1.89275
+Epoch: 11400 Train: 0.00001 Test: 1.79569
+Epoch: 11600 Train: 0.00005 Test: 1.89935
+Epoch: 11800 Train: 0.00001 Test: 1.87126
+Epoch: 12000 Train: 0.00010 Test: 2.14128
+Epoch: 12200 Train: 0.00002 Test: 1.91489
+Epoch: 12400 Train: 0.00003 Test: 2.02258
+Epoch: 12600 Train: 0.00004 Test: 1.94514
+Epoch: 12800 Train: 0.00002 Test: 2.02743
+Epoch: 13000 Train: 0.00001 Test: 2.01109
+Epoch: 13200 Train: 0.00001 Test: 2.01127
+Epoch: 13400 Train: 0.00001 Test: 2.07174
+Epoch: 13600 Train: 0.00012 Test: 2.35123
+Epoch: 13800 Train: 0.00001 Test: 2.07029
+Epoch: 14000 Train: 0.00000 Test: 2.09742
+Epoch: 14200 Train: 0.00002 Test: 2.10769
+Epoch: 14400 Train: 0.00008 Test: 2.25045
+Epoch: 14600 Train: 0.00001 Test: 2.11918
+Epoch 14600: New minimal relative error: 0.48%, model saved.
+Training Loss: tensor(0.)
+Test Loss: tensor(0.0028)
+Learned LE: [ 0.82449716 -0.00886428 -5.489776  ]
+True LE: [ 8.5729331e-01  1.2709239e-02 -1.4540108e+01]
+Relative Error: [6.8102756  6.994773   7.102613   ... 0.21972156 0.30676496 0.3268796 ]

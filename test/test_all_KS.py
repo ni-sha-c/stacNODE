@@ -1,22 +1,23 @@
 import argparse
 from test_metrics import *
 import datetime
-import sys
 import json
-from test_KS import *
-import nolds
+import numpy as np
+import argparse
+import logging
+import time
+import os
+import csv
+from matplotlib.pyplot import *
 
+import sys
 sys.path.append('..')
-from src.NODE_solve import *
-# True Models
-from examples.Brusselator import *
-from examples.Lorenz import *
-from examples.Lorenz_fixed import *
-from examples.Lorenz_periodic import *
-from examples.Sin import *
-from examples.Tent_map import *
-from examples.KS import *
-from examples.Henon import *
+
+from dyn_sys.dim1 import *
+from dyn_sys.dim2 import *
+from dyn_sys.dim3 import *
+from dyn_sys.dim4 import *
+from dyn_sys.KS import *
 
 
 if __name__ == '__main__':
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     # Assign Initial Point of Orbit
     L = 128 #128 # n = [128, 256, 512, 700]
     n = L-1 # num of internal node
-    T = 1501 #1000 #100
+    T = 1001 #1000 #100
     c = 0.4
 
     dx = L/(n+1)
@@ -112,11 +113,7 @@ if __name__ == '__main__':
 
     # Train the model, return node
     if args.loss_type == "Jacobian":
-        pred_train, true_train, pred_test, loss_hist, test_loss_hist, multi_step_error = jac_train(dyn_sys_info, m, device, dataset, longer_traj, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.time_step, real_time, args.num_trans, 0, args.reg_param, multi_step=False, minibatch=args.minibatch, batch_size=args.batch_size)
-
-    elif args.loss_type == "Auto_corr":
-        pred_train, true_train, pred_test, loss_hist, test_loss_hist, multi_step_error = ac_train(args.dyn_sys, m, device, dataset, longer_traj, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.time_step, real_time, args.num_trans, rho, minibatch=args.minibatch, batch_size=args.batch_size)
-        
+        pred_train, true_train, pred_test, loss_hist, test_loss_hist, multi_step_error = jac_train(dyn_sys_info, m, device, dataset, longer_traj, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.time_step, real_time, args.num_trans, 0, args.reg_param, multi_step=False, minibatch=args.minibatch, batch_size=args.batch_size)      
     else:
         pred_train, true_train, pred_test, loss_hist, test_loss_hist, multi_step_error = MSE_train(dyn_sys_info, m, device, dataset, longer_traj, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.time_step, real_time, args.num_trans, multi_step=False, minibatch=args.minibatch, batch_size=args.batch_size)
 
