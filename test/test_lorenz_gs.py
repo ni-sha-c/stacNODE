@@ -329,8 +329,9 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
             # Compute Jacobian (only for Full-batch)
             jacrev = torch.func.jacrev(model, argnums=1)
             compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0), chunk_size=1000)
-            cur_model_J = compute_batch_jac(0, X_batch).to(device)
-            jac_norm_diff = criterion(True_J[batch_start:batch_end], cur_model_J)
+            cur_model_J = compute_batch_jac(0, X).to(device)
+            # jac_norm_diff = criterion(True_J[batch_start:batch_end], cur_model_J)
+            jac_norm_diff = criterion(True_J, cur_model_J)
             train_loss += reg_param * jac_norm_diff
 
         train_loss.backward()
@@ -551,13 +552,14 @@ if __name__ == '__main__':
 
     # grid search
     modelchoices = ['MLP']#['MLP','MLP_skip']
-    hiddenchoices = [1024]#[256, 512, 1024]
-    layerchoices = [7]#[3, 5, 7]
-    batchchoices = [1000, 2000]#[1000, 2000]
-    weightdecay = [1e-3, 1e-4]#1[1e-3, 1e-4]
-    # regpchoices = [100, 500, 1000]
-    # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
-    combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, weightdecay))
+    hiddenchoices = [256, 512, 1024]#[256, 512, 1024]
+    layerchoices = [3, 5, 7]#[3, 5, 7]
+    # batchchoices = [1000, 2000]#[1000, 2000]
+    # weightdecay = [1e-3, 1e-4]#1[1e-3, 1e-4]
+    epochchoices = [8000, 10000]
+    regpchoices = [500, 1000]
+    combinations = list(itertools.product(modelchoices, epochchoices, hiddenchoices, layerchoices, regpchoices))
+    # combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, epoch))
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
@@ -565,10 +567,10 @@ if __name__ == '__main__':
     parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=8000)
-    parser.add_argument("--num_trans", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=1000, choices=[1000, 2000, None])
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
+    parser.add_argument("--num_test", type=int, default=6000)
+    parser.add_argument("--num_trans", type=int, default=0)
+    parser.add_argument("--batch_size", type=int, default=None, choices=[1000, 2000, None])
+    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=512)
@@ -590,13 +592,13 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     for index, combination in enumerate(combinations):
         args.model_type = combination[0]
-        args.n_hidden = combination[1]
-        args.n_layers = combination[2]
-        args.batch_size = combination[3]
-        args.weight_decay = combination[4]
+        args.num_epoch = combination[1]
+        args.n_hidden = combination[2]
+        args.n_layers = combination[3]
+        args.reg_param = combination[4]
 
         # combination_str = f"2nd_{args.loss_type}: {args.model_type}_{args.n_hidden}_{args.n_layers}_{args.batch_size}_{args.weight_decay}"
-        combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
+        combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.n_hidden}_{args.n_layers}_{args.reg_param}"
         print(combination_str)
 
         # Save initial settings
@@ -633,7 +635,7 @@ if __name__ == '__main__':
         loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Total_{start_time}.png"
         jac_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_Jacobian_matching_{start_time}.png"
         mse_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_MSE_part_{start_time}.png"
-        vf_err_path = f"../plot/Relative_error/{combination_str}.png"
+        vf_err_path = f"../plot/gs/{combination_str}.png"
         true_plot_path_1 = f"../plot/Vector_field/True_{args.dyn_sys}_1.png"
         true_plot_path_2 = f"../plot/Vector_field/True_{args.dyn_sys}_2.png"
         phase_path = f"../plot/Phase_plot/{args.dyn_sys}_{args.model_type}_{args.loss_type}.png"
@@ -644,10 +646,10 @@ if __name__ == '__main__':
             # plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
 
         # Plot vector field & phase space
-        # best_model = m
-        # best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
-        # best_model.eval()
-        # percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
+        best_model = m
+        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
+        best_model.eval()
+        percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
         # plot_attractor(best_model, dyn_sys_info, 50, phase_path)
 
         # compute LE
