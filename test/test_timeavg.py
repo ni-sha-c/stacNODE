@@ -13,20 +13,26 @@ if __name__ == '__main__':
     dyn_sys= "lorenz"
     dyn_sys_f, dim = define_dyn_sys(dyn_sys)
     time_step= 0.01
-    len_T = 50*int(1/time_step)
+    len_T = 10*int(1/time_step)
+    hidden=256
+    model = 'MLP_skip'
 
     # 2. define num init points
-    N = 1000
+    N = 50
     inits = torch.randn(N, dim).double().to(device)
     every = 10
     ind_func = 0
 
     # 3. call models
-    MSE_path = "../test_result/expt_"+str(dyn_sys)+"/AdamW/"+str(time_step)+'/'+'MSE_0/model.pt'
-    JAC_path = "../test_result/expt_"+str(dyn_sys)+"/AdamW/"+str(time_step)+'/'+'JAC_0/model.pt'
+    MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
+    JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
 
-    MSE = create_NODE(device, dyn_sys= dyn_sys, n_nodes=dim,  n_hidden=64, T=time_step).double()
-    JAC = create_NODE(device, dyn_sys= dyn_sys, n_nodes=dim,  n_hidden=64, T=time_step).double()
+    if model == "MLP_skip":
+        MSE = ODE_MLP_skip(y_dim=dim, n_hidden=hidden, n_layers=5).to(device).double()
+        JAC = ODE_MLP_skip(y_dim=dim, n_hidden=hidden, n_layers=5).to(device).double()
+    else:
+        MSE = ODE_MLP(y_dim=dim, n_hidden=hidden, n_layers=4).to(device).double()
+        JAC = ODE_MLP(y_dim=dim, n_hidden=hidden, n_layers=4).to(device).double()
     MSE.load_state_dict(torch.load(MSE_path))
     JAC.load_state_dict(torch.load(JAC_path))
     MSE.eval()
@@ -70,25 +76,28 @@ if __name__ == '__main__':
 
     # 5. indicator function
     # len_T x num_init x dim
-    true_avg_traj = np.mean(true_traj[:, :, ind_func].detach().cpu().numpy(), axis=1)
-    MSE_avg_traj = np.mean(MSE_traj_cleaned[:, :, ind_func], axis=1)
-    JAC_avg_traj = np.mean(JAC_traj[:, :, ind_func].detach().cpu().numpy(), axis=1)
+    true_avg_traj = true_traj[:, :, ind_func].detach().cpu().numpy()
+    MSE_avg_traj = MSE_traj_cleaned[:, :, ind_func]
+    JAC_avg_traj = JAC_traj[:, :, ind_func].detach().cpu().numpy()
     print("avg traj shape:", JAC_avg_traj.shape)
 
     # 5-1. Compute time_avg
     true_timeavg, MSE_timeavg, JAC_timeavg = [], [], []
     for t in range(0, true_avg_traj.shape[0], every):
-        true_timeavg.append(np.mean(true_avg_traj[:t]))
-        MSE_timeavg.append(np.mean(MSE_avg_traj[:t]))
-        JAC_timeavg.append(np.mean(JAC_avg_traj[:t]))
+        # true_timeavg.append(np.mean(true_avg_traj[:t]))
+        # MSE_timeavg.append(np.mean(MSE_avg_traj[:t]))
+        # JAC_timeavg.append(np.mean(JAC_avg_traj[:t]))
+        true_timeavg.append(np.mean(true_avg_traj[:t], axis=0))
+        MSE_timeavg.append(np.mean(MSE_avg_traj[:t], axis=0))
+        JAC_timeavg.append(np.mean(JAC_avg_traj[:t], axis=0))
 
     # 6. plot dist
-    pdf_path = '../plot/timeavg_'+str(dyn_sys)+'_all'+'_'+str(N)+'_'+str(len_T)+'.jpg'
+    pdf_path = '../plot/timeavg_'+str(dyn_sys)+'_all'+'_'+str(N)+'_'+str(len_T)+'_'+str(ind_func)+'_'+str(model)+'.jpg'
 
     fig, ax1 = subplots(1,figsize=(16,8)) #, sharey=True
     sns.set_theme()
-
     true_timeavg = np.asarray(true_timeavg)
+    print("shape", true_timeavg.shape)
     num_tau = true_timeavg.shape[0]
     tau_x = np.linspace(0, len_T*time_step, num_tau)
 
@@ -103,9 +112,9 @@ if __name__ == '__main__':
     # ax1.hist(node_data[:80, 1].detach().cpu(), bins=50, alpha=0.5, color="turquoise") #density=True, 
     transition = 0
     if str(dyn_sys) == "lorenz":     # lorenz (before -> 2)
-        ax1.semilogy(tau_x[transition:], JAC_timeavg[transition:], color="slateblue", linewidth=2., alpha=0.8, marker='o')
-        ax1.semilogy(tau_x[transition:], true_timeavg[transition:], color="salmon", linewidth=2., alpha=0.8, marker='o')
-        ax1.semilogy(tau_x[transition:], MSE_timeavg[transition:], color="turquoise",  linewidth=2., alpha=0.8, marker='o')
+        # ax1.plot(tau_x[transition:], JAC_timeavg[transition:], color="slateblue", linewidth=2., alpha=0.8, marker='o')
+        ax1.plot(tau_x[transition:], true_timeavg[transition:], color="salmon", linewidth=2., alpha=0.8, marker='o')
+        ax1.plot(tau_x[transition:], MSE_timeavg[transition:], color="turquoise",  linewidth=2., alpha=0.8, marker='o')
     elif str(dyn_sys) == "rossler": 
         print("rossler!!!")
         ax1.plot(tau_x, JAC_timeavg, color="slateblue", linewidth=2., alpha=0.8, marker='o')
@@ -118,7 +127,8 @@ if __name__ == '__main__':
 
 
     ax1.grid(True)
-    ax1.legend(['JAC', 'True', 'MSE'], fontsize=30)
+    # ax1.legend(['JAC', 'True', 'MSE'], fontsize=30)
+    ax1.legend(['True', 'MSE'], fontsize=30)
     ax1.xaxis.set_tick_params(labelsize=34)
     ax1.yaxis.set_tick_params(labelsize=34)
     tight_layout()

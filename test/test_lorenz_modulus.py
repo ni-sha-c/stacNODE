@@ -253,7 +253,7 @@ def main(logger, loss_type):
 
             # MSE Loss
             loss_mse = criterion(y_pred.view(batch_size, -1), y_true.view(batch_size, -1))
-            loss = loss_mse / torch.norm(y_true, p=2) * (1/time_step/time_step)
+            loss = loss_mse / torch.norm(y_true, p=2)
             
             if loss_type == "JAC":
                 with timer:

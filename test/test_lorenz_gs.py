@@ -553,8 +553,8 @@ if __name__ == '__main__':
     modelchoices = ['MLP']#['MLP','MLP_skip']
     hiddenchoices = [1024]#[256, 512, 1024]
     layerchoices = [7]#[3, 5, 7]
-    batchchoices = [2000]#[1000, 2000]
-    weightdecay = [1e-4]#1[1e-3, 1e-4]
+    batchchoices = [1000, 2000]#[1000, 2000]
+    weightdecay = [1e-3, 1e-4]#1[1e-3, 1e-4]
     # regpchoices = [100, 500, 1000]
     # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
     combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, weightdecay))
@@ -575,7 +575,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--reg_param", type=float, default=3000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_MSE_new/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/", "../plot/Vector_field/train_MLPskip_MSE_new/", "../plot/Vector_field/train_MLP_MSE_new/"])
+    parser.add_argument("--train_dir", default="../plot/gs/train_MLPskip_MSE_new/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/", "../plot/Vector_field/train_MLPskip_MSE_new/", "../plot/Vector_field/train_MLP_MSE_new/"])
 
     # Initialize Settings
     args = parser.parse_args()
@@ -595,8 +595,8 @@ if __name__ == '__main__':
         args.batch_size = combination[3]
         args.weight_decay = combination[4]
 
-        combination_str = f"2nd_{args.loss_type}: {args.model_type}_{args.n_hidden}_{args.n_layers}_{args.batch_size}_{args.weight_decay}"
-        # combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
+        # combination_str = f"2nd_{args.loss_type}: {args.model_type}_{args.n_hidden}_{args.n_layers}_{args.batch_size}_{args.weight_decay}"
+        combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.num_trans}_{args.n_hidden}_{args.n_layers}"
         print(combination_str)
 
         # Save initial settings
@@ -644,11 +644,11 @@ if __name__ == '__main__':
             # plot_loss(epochs, abs(loss_hist - args.reg_param*jac_train_hist)*(args.time_step)**2, abs(test_loss_hist - args.reg_param*jac_test_hist)*(args.time_step)**2, mse_loss_path) 
 
         # Plot vector field & phase space
-        best_model = m
-        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
-        best_model.eval()
-        percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
-        plot_attractor(best_model, dyn_sys_info, 50, phase_path)
+        # best_model = m
+        # best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
+        # best_model.eval()
+        # percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
+        # plot_attractor(best_model, dyn_sys_info, 50, phase_path)
 
         # compute LE
         true_traj = torchdiffeq.odeint(dyn_sys_func, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)

@@ -135,13 +135,11 @@ def run_KS(u, c, dx, dt, T, mean, device):
             print("run_KS", t)
         u = u + explicit_rk(u, c, dx, dt, device) + implicit_rk(u, c, dx, dt, device) 
         u[0], u[-1] = 0., 0.
-        # u_list.append(u.clone())
-        u_list.append(u.detach().cpu())
+        u_list.append(u.clone())
         t += dt
 
     if torch.is_tensor(u):
         u_list = torch.stack(u_list)
-        # print('tensor')
     elif isinstance(u, list):
         print('list')
         list_tensors = [torch.tensor(np.array(u)) for u in u_list]

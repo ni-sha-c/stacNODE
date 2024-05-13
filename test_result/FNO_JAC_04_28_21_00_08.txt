@@ -1,6 +1,0 @@
-Loss Type: JAC
-Training Loss: tensor(0.0141, device='cuda:0', grad_fn=<AddBackward0>)
-Learned LE: [  0.16355889  -0.13519582 -15.113643  ]
-True LE: [  0.44165272   0.07867333 -14.297099  ]
-Learned mean: tensor([ 4.3658,  4.0922, 23.7506], device='cuda:0', grad_fn=<MeanBackward1>)
-True mean: tensor([ 4.3996,  4.3798, 24.8719])

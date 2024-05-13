@@ -19,15 +19,16 @@ if __name__ == '__main__':
     N = 2000
     inits = torch.randn(N, dim).double().to(device)
     every = 100
-    ind_func = 0
+    ind_func = 2
     vec_len = 100 #300
+    hidden=256
 
     # 3. call models
-    MSE_path = "../test_result/expt_"+str(dyn_sys)+"/AdamW/"+str(time_step)+'/'+'MSE_0/model.pt'
-    JAC_path = "../test_result/expt_"+str(dyn_sys)+"/AdamW/"+str(time_step)+'/'+'JAC_0/model.pt'
+    MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/MLP_MSE_fullbatch/best_model.pth"
+    JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/MLP_Jacobian_fullbatch/best_model.pth"
 
-    MSE = create_NODE(device, dyn_sys= dyn_sys, n_nodes=dim,  n_hidden=64, T=time_step).double()
-    JAC = create_NODE(device, dyn_sys= dyn_sys, n_nodes=dim,  n_hidden=64, T=time_step).double()
+    MSE = ODE_MLP(y_dim=dim, n_hidden=hidden, n_layers=4).to(device).double()
+    JAC = ODE_MLP(y_dim=dim, n_hidden=hidden, n_layers=4).to(device).double()
     MSE.load_state_dict(torch.load(MSE_path))
     JAC.load_state_dict(torch.load(JAC_path))
     MSE.eval()
@@ -83,7 +84,7 @@ if __name__ == '__main__':
     JAC_ac = auto_corr(JAC_avg_traj, tau, ind_func, time_step, vec_len)
 
     # 6. plot dist
-    pdf_path = '../plot/corr_'+str(dyn_sys)+'_'+str(N)+'_'+str(len_T)+'.jpg'
+    pdf_path = '../plot/corr_'+str(dyn_sys)+'_'+str(N)+'_'+str(len_T)+'_'+str(ind_func)+'.jpg'
 
     fig, ax1 = subplots(1,figsize=(16,8)) #, sharey=True
     sns.set_theme()
@@ -93,11 +94,11 @@ if __name__ == '__main__':
     # print("true_mean", true_mean)
 
 
-    transition = 0
+    transition = 500
     if str(dyn_sys) == "lorenz":     # lorenz (before -> 2)
-        ax1.semilogy(tau_x, JAC_ac, color="slateblue", linewidth=2., alpha=0.8, marker='o', markevery=every)
-        ax1.semilogy(tau_x, true_ac, color="salmon", linewidth=2., alpha=0.8, marker='o', markevery=every)
-        ax1.semilogy(tau_x, MSE_ac, color="turquoise",  linewidth=2., alpha=0.8, marker='o', markevery=every)
+        ax1.semilogy(tau_x, JAC_ac, color="slateblue", linewidth=2., alpha=0.6, marker='o', markevery=every)
+        ax1.semilogy(tau_x, true_ac, color="salmon", linewidth=2., alpha=0.6, marker='o', markevery=every)
+        ax1.semilogy(tau_x, MSE_ac, color="turquoise",  linewidth=2., alpha=0.6, marker='o', markevery=every)
     elif str(dyn_sys) == "rossler": 
         print("rossler!!!")
         ax1.plot(tau_x, JAC_ac, color="slateblue", linewidth=2., alpha=0.8, marker='o', markevery=every)
