@@ -995,23 +995,6 @@ def vis(xs, ts, latent_sde, bm_vis, norms_vis, norms_data, train_dir, num_sample
 
     z1_sample, z2_sample, z3_sample = np.split(xs_nn, indices_or_sections=3, axis=-1)
 
-    # distances, mean_dist, median_dist = compute_dimension_wise_wasserstein(xs, xs_nn)
-    # print("Mean Wasserstein Distance (by dimension):", mean_dist)
-    # print("Median Wasserstein Distance (by dimension):", median_dist)
-
-    # [ax01.plot(z1_sample[i,:, 0], z2_sample[i, :, 0], z3_sample[i,:, 0]) for i in range(num_samples)]
-    # ax01.scatter(z1_sample[:num_samples,:, 0], z2_sample[:num_samples,:, 0], z3_sample[:10,:, 0], marker='x')
-    # ax01.set_yticklabels([])
-    # ax01.set_xticklabels([])
-    # ax01.set_zticklabels([])
-    # ax01.set_xlabel('$z_1$', labelpad=0., fontsize=16)
-    # ax01.set_ylabel('$z_2$', labelpad=.5, fontsize=16)
-    # ax01.set_zlabel('$z_3$', labelpad=0., horizontalalignment='center', fontsize=16)
-    # ax01.set_title('Samples', fontsize=20)
-    # ax01.set_xlim(xlim)
-    # ax01.set_ylim(ylim)
-    # ax01.set_zlim(zlim)
-
     [ax01.plot(z1_sample[:, i, 0], z2_sample[:, i, 0], z3_sample[:, i, 0]) for i in range(num_samples)]
     ax01.scatter(z1_sample[0, :num_samples, 0], z2_sample[0, :num_samples, 0], z3_sample[0, :num_samples, 0], marker='x')
     ax01.set_yticklabels([])
@@ -1828,7 +1811,7 @@ def main(
         hidden_size=128,
         lr_init=1e-2,
         t0=0.,
-        t1=6., #8 is too long.
+        t1=30., #8 is too long.
         lr_gamma=0.997,
         num_iters=5000,
         kl_anneal_iters=1000,
@@ -1900,7 +1883,7 @@ def main(
     time_step = 0.01
 
     torch.cuda.empty_cache()
-
+    traj, traj_nn = vis(xs, ts, latent_sde, bm_vis, norms_data, norms_data, img_path)#vis(xs, ts, latent_sde, bm_vis, norms_vis, norms_data, img_path, best_model, mse_model)
     _y0 = torch.randn(1, 3, device=device)
     ts0 = torch.linspace(0, 2, steps=1000, device=device)
     true_plot_path_1 = train_dir+"True_vf.png"

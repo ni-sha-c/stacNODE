@@ -165,3 +165,75 @@ def auto_corr(traj, tau, ind_func, dt, len_integration):
         # # compute corr between
         corr[j] = np.dot(tau_traj,base_traj)/(len_integration) - traj_mean_sq
     return np.abs(corr)
+
+def rk4_KS(f, y0, t):
+    h = t[1] - t[0]
+    k1 = f(t, y0)
+    k2 = f(t + h/2, y0 + k1 * h / 2.)
+    k3 = f(t + h/2, y0 + k2 * h / 2.)
+    k4 = f(t + h, y0 + k3 * h)
+    new_y = y0 + (h / 6.) * (k1 + 2*k2 + 2*k3 + k4)
+    return new_y
+
+def rk4(x, f, dt):
+    k1 = f(0, x)
+    k2 = f(0, x + dt*k1/2)
+    k3 = f(0, x + dt*k2/2)
+    k4 = f(0, x + dt*k3)
+    return x + dt/6*(k1 + 2*k2 + 2*k3 + k4)
+    
+def lyap_exps(dyn_sys_info, s, traj, iters):
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    dyn_type, model, dim, time_step = dyn_sys_info
+    LE = torch.zeros(dim).to(device)
+    traj_gpu = traj.to(device)
+
+    if dim in (1,2):
+        le = 0
+        for t in range(traj_gpu.shape[0]):
+            if (model == tilted_tent_map) or (model == plucked_tent_map) or (model == pinched_tent_map) or (model == baker):
+                le += torch.log(abs(F.jacobian(lambda x: model(x, s), traj_gpu[t]))) # true model
+            else:
+                le += torch.log(abs(F.jacobian(lambda x: model(0, x), traj_gpu[t]))) # learned model
+        return le/traj_gpu.shape[0]
+    else:
+        if dyn_type == "KS":
+            lower_dim = 15
+            Q = torch.eye(*(dim, lower_dim)).to(device).double()
+            # True
+            if model == run_KS:
+                L = 128 #128 # n = [128, 256, 512, 700]
+                n = L-1 # num of internal node
+                dx = 1
+                dt = time_step
+                c = 0.4
+                lyap_exp = []
+                U = torch.eye(*(dim, lower_dim)).double()
+                for i in range(iters):
+                    if i % 1000 == 0: print("rk4", i) 
+                    x0 = traj_gpu[i].requires_grad_(True)
+                    cur_J = F.jacobian(lambda x: run_KS(x, c, dx, dt, dt*2, False, device), x0, vectorize=True)[-1]
+                    J = torch.matmul(cur_J.to(device).double(), U.to(device).double())
+                    Q, R = torch.linalg.qr(J)
+                    lyap_exp.append(torch.log(abs(R.diagonal())))
+                    U = Q.double() #new axes after iteration
+                lyap_exp = torch.stack(lyap_exp).detach().cpu().numpy()
+                LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (dt*iters) for j in range(lower_dim)]
+                return torch.tensor(LE)
+            # Learned
+            else:
+                ts = torch.linspace(0, time_step, 2)
+                f = lambda x: rk4_KS(model, x, ts)
+                Jac = torch.vmap(torch.func.jacrev(f), chunk_size=5)(traj_gpu)
+            LE = torch.zeros(lower_dim).to(device)
+        else:
+            f = lambda x: rk4(x, model, time_step)
+            Jac = torch.vmap(torch.func.jacrev(f))(traj_gpu)
+            Q = torch.rand(dim,dim).to(device)
+        for i in range(iters):
+            if i > 0 and i % 1000 == 0:
+                print("Iteration: ", i, ", LE[0]: ", LE[0].detach().cpu().numpy()/i/time_step)
+            Q = torch.matmul(Jac[i], Q)
+            Q, R = torch.linalg.qr(Q)
+            LE += torch.log(abs(torch.diag(R)))
+        return LE/iters/time_step
