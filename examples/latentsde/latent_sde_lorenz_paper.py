@@ -90,7 +90,7 @@ class StochasticLorenz(object):
     def sample(self, x0, ts, noise_std, normalize):
         """Sample data for training. Store data normalization constants if necessary."""
         # xs = torchsde.sdeint(self, x0, ts)
-        xs = euler_maruyama_f(self, x0, ts, dt=1e-3)
+        xs = euler_maruyama_f(self, x0, ts, dt=1e-2)
         if normalize:
             mean, std = torch.mean(xs, dim=(0, 1)), torch.std(xs, dim=(0, 1))
             xs.sub_(mean).div_(std).add_(torch.randn_like(xs) * noise_std)
@@ -210,7 +210,7 @@ class LatentSDE(nn.Module):
         z0 = self.pz0_mean + self.pz0_logstd.exp() * eps
         print('z0:', z0.shape)
         # zs = torchsde.sdeint(self, z0, ts, names={'drift': 'h'}, dt=1e-3, bm=None) #
-        zs = euler_maruyama(self, z0, ts, dt=1e-3)
+        zs = euler_maruyama(self, z0, ts, dt=1e-2)
         # Most of the times in ML, we don't sample the observation noise for visualization purposes.
         _xs = self.projector(zs)
         return _xs
@@ -295,11 +295,11 @@ def make_dataset(t0, t1, batch_size, noise_std, train_dir, device):
             raise ValueError("Times interval [t0, t1] has changed; please delete and regenerate the data.")
     else:
         _y0 = torch.randn(batch_size, 3, device=device)
-        # ts0 = torch.linspace(t0, 16, steps=8000, device=device)
-        # xs0 = StochasticLorenz().sample(_y0, ts0, noise_std, normalize=False)
+        ts0 = torch.linspace(t0, 16, steps=8000, device=device)
+        xs0 = StochasticLorenz().sample(_y0, ts0, noise_std, normalize=False)
         ts = torch.linspace(t0, t1, steps=1000, device=device)
-        # xs, norms = StochasticLorenz().sample(xs0[-1,:], ts, noise_std, normalize=True)
-        xs, norms = StochasticLorenz().sample(_y0, ts, noise_std, normalize=True)
+        xs, norms = StochasticLorenz().sample(xs0[-1,:], ts, noise_std, normalize=True)
+        # xs, norms = StochasticLorenz().sample(_y0, ts, noise_std, normalize=True)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         torch.save({'xs': xs, 'ts': ts, 'norms': norms}, data_path)
         logging.warning(f'Stored toy data at: {data_path}')
@@ -657,17 +657,17 @@ def test_model(model, test_xs, t0, t1, device, bm_vis, batchsize, train_dir):
     return mse
 
 def main(
-        batch_size=1024,
+        batch_size=128,
         latent_size=4,
         context_size=64,
         hidden_size=128,
         lr_init=1e-2,
         t0=0.,
-        t1=2.,
+        t1=6.,
         lr_gamma=0.997,
         num_iters=5000,
         kl_anneal_iters=1000,
-        pause_every=2,
+        pause_every=250,
         noise_std=0.01,
         adjoint=False,
         train_dir='./dump/lorenz2/',
