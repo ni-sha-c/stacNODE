@@ -33,7 +33,7 @@ hidden = 256
 model = 'MLP_skip'
 num_trajectories = 5000
 long_len_T = 100*int(1/time_step)
-short_len_T = 300*int(1/time_step)
+short_len_T = 50*int(1/time_step)
 
 
 if model == "MLP_skip":
@@ -86,15 +86,20 @@ mse_short = np.transpose(mse_short, (1, 0, 2))
 
 learned_LE = []
 mse_LE = []
+true_LE = []
 
 for i in range(num_trajectories):
     print(i)
+    true_LE.append(lyap_exps([dyn_sys, dyn, dim, time_step], s, torch.tensor(true_short[i]), short_len_T).detach().cpu().numpy())
     learned_LE.append(lyap_exps([dyn_sys, best_model, dim, time_step], s, torch.tensor(learned_short[i]), short_len_T).detach().cpu().numpy())
     mse_LE.append(lyap_exps([dyn_sys, mse_model, dim, time_step], s, torch.tensor(mse_short[i]), short_len_T).detach().cpu().numpy())
 
+# true_le = lyap_exps([dyn_sys, dyn_sys, dim, time_step], s, torch.tensor(_short[0]), short_len_T).detach().cpu().numpy()
+# print("true le:", true_le)
 # Define the file name for the CSV file
-JAC_file = "JAC_LE.csv"
-MSE_file = "MSE_LE.csv"
+JAC_file = "JAC_LE_50.csv"
+MSE_file = "MSE_LE_50.csv"
+TRUE_file = "TRUE_LE_50.csv"
 
 # Open the CSV file in write mode
 with open(JAC_file, 'w', newline='') as csvfile:
@@ -104,6 +109,10 @@ with open(JAC_file, 'w', newline='') as csvfile:
 with open(MSE_file, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile)
     csvwriter.writerows(mse_LE)
+
+with open(TRUE_file, 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerows(true_LE)
 
 # # Function to plot histograms for three models in one subplot
 # def plot_histograms(ax, data_true, data_learned, data_mse, title):
