@@ -22,7 +22,7 @@ pip install fire
 To run, execute:
 python -m examples.latent_sde_lorenz
 """
-
+import EntropyHub as eh
 import logging
 import os
 from typing import Sequence
@@ -89,7 +89,8 @@ class StochasticLorenz(object):
 
     def sample(self, x0, ts, noise_std, normalize):
         """Sample data for training. Store data normalization constants if necessary."""
-        xs = torchsde.sdeint(self, x0, ts)
+        # xs = torchsde.sdeint(self, x0, ts)
+        xs = euler_maruyama_f(self, x0, ts, dt=1e-3)
         if normalize:
             mean, std = torch.mean(xs, dim=(0, 1)), torch.std(xs, dim=(0, 1))
             xs.sub_(mean).div_(std).add_(torch.randn_like(xs) * noise_std)
@@ -237,9 +238,53 @@ def euler_maruyama(sde, y0, ts, dt):
 
     return y
 
+def euler_maruyama_f(sde, y0, ts, dt):
+    """Simple Euler-Maruyama solver for SDEs.
+
+    Args:
+        sde: An SDE object with methods `f` and `g` for drift and diffusion.
+        y0 (torch.Tensor): Initial state of the system.
+        ts (torch.Tensor): Times at which to simulate, assumed to be evenly spaced.
+        dt (float): Time step size.
+    
+    Returns:
+        torch.Tensor: Simulated trajectory.
+    """
+    num_steps = len(ts)
+    y = torch.zeros(num_steps, *y0.shape, device=y0.device, dtype=y0.dtype)
+    y[0] = y0
+
+    for i in range(1, num_steps):
+        t = ts[i-1]
+        dw = torch.randn_like(y0) * torch.sqrt(torch.tensor(dt, device=y0.device))
+        y[i] = y[i-1] + sde.f(t, y[i-1]) * dt + sde.g(t, y[i-1]) * dw
+
+    return y
+
+
+# def make_dataset(t0, t1, batch_size, noise_std, train_dir, device):
+#     data_path = os.path.join(train_dir, 'lorenz_data.pth')
+#     if os.path.exists(data_path):
+#         data_dict = torch.load(data_path)
+#         xs, ts, norms = data_dict['xs'], data_dict['ts'], data_dict['norms']
+#         logging.warning(f'Loaded toy data at: {data_path}')
+#         if xs.shape[1] != batch_size:
+#             raise ValueError("Batch size has changed; please delete and regenerate the data.")
+#         if ts[0] != t0 or ts[-1] != t1:
+#             raise ValueError("Times interval [t0, t1] has changed; please delete and regenerate the data.")
+#     else:
+#         _y0 = torch.randn(batch_size, 3, device=device)
+#         ts = torch.linspace(t0, t1, steps=100, device=device)
+#         xs, norms = StochasticLorenz().sample(_y0, ts, noise_std, normalize=True)
+
+#         os.makedirs(os.path.dirname(data_path), exist_ok=True)
+#         # torch.save({'xs': xs, 'ts': ts}, data_path)
+#         torch.save({'xs': xs, 'ts': ts, 'norms': norms}, data_path)
+#         logging.warning(f'Stored toy data at: {data_path}')
+#     return xs, ts, norms
 
 def make_dataset(t0, t1, batch_size, noise_std, train_dir, device):
-    data_path = os.path.join(train_dir, 'lorenz_data.pth')
+    data_path = os.path.join(train_dir, 'lorenz_data_ode.pth')
     if os.path.exists(data_path):
         data_dict = torch.load(data_path)
         xs, ts, norms = data_dict['xs'], data_dict['ts'], data_dict['norms']
@@ -250,11 +295,12 @@ def make_dataset(t0, t1, batch_size, noise_std, train_dir, device):
             raise ValueError("Times interval [t0, t1] has changed; please delete and regenerate the data.")
     else:
         _y0 = torch.randn(batch_size, 3, device=device)
-        ts = torch.linspace(t0, t1, steps=100, device=device)
+        # ts0 = torch.linspace(t0, 16, steps=8000, device=device)
+        # xs0 = StochasticLorenz().sample(_y0, ts0, noise_std, normalize=False)
+        ts = torch.linspace(t0, t1, steps=1000, device=device)
+        # xs, norms = StochasticLorenz().sample(xs0[-1,:], ts, noise_std, normalize=True)
         xs, norms = StochasticLorenz().sample(_y0, ts, noise_std, normalize=True)
-
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
-        # torch.save({'xs': xs, 'ts': ts}, data_path)
         torch.save({'xs': xs, 'ts': ts, 'norms': norms}, data_path)
         logging.warning(f'Stored toy data at: {data_path}')
     return xs, ts, norms
@@ -621,10 +667,10 @@ def main(
         lr_gamma=0.997,
         num_iters=5000,
         kl_anneal_iters=1000,
-        pause_every=500,
+        pause_every=2,
         noise_std=0.01,
         adjoint=False,
-        train_dir='./dump/lorenz1/',
+        train_dir='./dump/lorenz2/',
         method="euler",
 ):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -719,7 +765,17 @@ def main(
     bm_vis = torchsde.BrownianInterval(
         t0=t0, t1=t1, size=(batch_size*4, latent_size,), device=device, levy_area_approximation="space-time")
     vis(xs, ts, latent_sde, bm_vis, norms_data, norms_data, train_dir+'testlongdata3', num_samples=30)
+    # for i in range(3):
+    #     for j in range(3):
+    #         print("sample", i, "Dimension", j)
+    #         print('xs', xs[:,i,j])
+    #         true_entropy, true_ci = eh.K2En(xs[:,i,j], m=1) #tau=8, Logx=np.exp(2), r=1e-5 r=1.2 , r=r_val.astype(float) , tau=int(min_non_zero+1)
+    #         MSE_entropy, MSE_ci = eh.K2En(xs_nn[:,i,j], m=1)
 
+
+
+    #         print("True", true_entropy, true_ci)
+    #         print("MSE", MSE_entropy, MSE_ci)
 
 
 if __name__ == "__main__":
