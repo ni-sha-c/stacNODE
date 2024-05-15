@@ -90,7 +90,7 @@ class StochasticLorenz(object):
     def sample(self, x0, ts, noise_std, normalize):
         """Sample data for training. Store data normalization constants if necessary."""
         # xs = torchsde.sdeint(self, x0, ts)
-        xs = euler_maruyama_f(self, x0, ts, dt=1e-2)
+        xs = rk4_solver(self, x0, ts, dt=1e-2)
         if normalize:
             mean, std = torch.mean(xs, dim=(0, 1)), torch.std(xs, dim=(0, 1))
             xs.sub_(mean).div_(std).add_(torch.randn_like(xs) * noise_std)
@@ -238,26 +238,23 @@ def euler_maruyama(sde, y0, ts, dt):
 
     return y
 
-def euler_maruyama_f(sde, y0, ts, dt):
-    """Simple Euler-Maruyama solver for SDEs.
+def rk4_step(sde, y, t, dt):
+    """Perform a single RK4 step."""
+    f = sde.f
+    k1 = f(t, y) * dt
+    k2 = f(t + dt / 2, y + k1 / 2) * dt
+    k3 = f(t + dt / 2, y + k2 / 2) * dt
+    k4 = f(t + dt, y + k3) * dt
+    return y + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
-    Args:
-        sde: An SDE object with methods `f` and `g` for drift and diffusion.
-        y0 (torch.Tensor): Initial state of the system.
-        ts (torch.Tensor): Times at which to simulate, assumed to be evenly spaced.
-        dt (float): Time step size.
-    
-    Returns:
-        torch.Tensor: Simulated trajectory.
-    """
+def rk4_solver(sde, y0, ts, dt):
     num_steps = len(ts)
     y = torch.zeros(num_steps, *y0.shape, device=y0.device, dtype=y0.dtype)
     y[0] = y0
 
     for i in range(1, num_steps):
         t = ts[i-1]
-        dw = torch.randn_like(y0) * torch.sqrt(torch.tensor(dt, device=y0.device))
-        y[i] = y[i-1] + sde.f(t, y[i-1]) * dt + sde.g(t, y[i-1]) * dw
+        y[i] = rk4_step(sde, y[i-1], t, dt)
 
     return y
 
