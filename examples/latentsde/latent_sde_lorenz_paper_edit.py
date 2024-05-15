@@ -516,6 +516,7 @@ def vis(xs, ts, latent_sde, bm_vis, norms_vis, norms_data, train_dir, num_sample
     # xs = StochasticLorenz().sample(_y0, ts, noise_std, normalize=False)
     # right plot: data.
     z1, z2, z3 = np.split(xs.cpu().numpy(), indices_or_sections=3, axis=-1)
+    print("z1", z1.shape)
     [ax00.plot(z1[:, i, 0], z2[:, i, 0], z3[:, i, 0]) for i in range(num_samples)]
     ax00.scatter(z1[0, :num_samples, 0], z2[0, :num_samples, 0], z3[0, :num_samples, 0], marker='x')
     ax00.set_yticklabels([])
@@ -583,22 +584,19 @@ def test_model(model, test_xs, t0, t1, device, bm_vis, batchsize, train_dir):
         # print('predicted:', predicted.shape, 'test_xs:', test_xs.shape)
         mse = torch.mean((predicted - test_xs) ** 2).item()
         print(f"Average Test MSE: {mse}")
-
-        # vis(test_xs, ts, model, bm_vis, norms_test, norms_data, train_dir+'testdata', num_samples=30)
-
     return mse
 
 # latent_size, context_size, hidden_size, noise_std
 def main(
-        batch_size=128,
+        batch_size=10,
         latent_size=4,
         context_size=64,
         hidden_size=128,
         lr_init=1e-2,
         t0=0.,
-        t1=200.,
+        t1=10.,
         lr_gamma=0.997,
-        num_iters=5000,
+        num_iters=20000,
         kl_anneal_iters=1000,
         pause_every=250,
         noise_std=0.01,
@@ -616,7 +614,8 @@ def main(
         hidden_size=hidden_size,
     ).to(device)
     t0_test=2
-    t1_test=4.97
+    # t1_test=4.97
+    t1_test = 10.
     test_xs, test_ts, _ = make_testdataset(t0_test, t1_test, 1, 0.01, './dump/lorenz/', device)
 
     optimizer = optim.Adam(params=latent_sde.parameters(), lr=lr_init)
@@ -664,10 +663,10 @@ def main(
             t0=t0_test, t1=t1_test, size=(batch_size, latent_size,), device=device, levy_area_approximation="space-time")
         # test_model(latent_sde, test_xs, t1, t1 + 2.97, device, bm_vis, 1024, train_dir)
 
-        testxs, ts, norms_test = make_fulltestdataset(t0=t0_test, t1=t1_test, batch_size=batch_size, noise_std=noise_std, train_dir=train_dir, device=device)
-        vis(testxs, ts, latent_sde, bm_vis, norms_test, norms_test, train_dir+'testdata', num_samples=30)
+        # testxs, ts, norms_test = make_fulltestdataset(t0=t0_test, t1=t1_test, batch_size=batch_size, noise_std=noise_std, train_dir=train_dir, device=device)
+        # vis(testxs, ts, latent_sde, bm_vis, norms_test, norms_test, train_dir+'testdata', num_samples=30)
         
-            # Plot the MSE values
+        # Plot the MSE values
         plt.figure(figsize=(10, 5))
         plt.plot(range(1, num_iters + 1), mse_values, label='MSE')
         plt.xlabel('Iteration')
@@ -685,25 +684,11 @@ def main(
             for i in range(num_iters):
                 f.write(f'{i+1}\t{log_pxs_values[i]:.4f}\t{log_ratio_values[i]:.4f}\t{mse_values[i]:.4f}\t{loss_values[i]:.4f}\n')
 
-
-    # def sample(self, batch_size, ts, bm=None):
-    #     eps = torch.randn(size=(batch_size, *self.pz0_mean.shape[1:]), device=self.pz0_mean.device)
-    #     z0 = self.pz0_mean + self.pz0_logstd.exp() * eps
-    #     zs = torchsde.sdeint(self, z0, ts, names={'drift': 'h'}, dt=1e-3, bm=bm)
-    #     # Most of the times in ML, we don't sample the observation noise for visualization purposes.
-    #     _xs = self.projector(zs)
-    #     return _xs
-
-
-    # ts = torch.linspace(t0, 400, steps=40000, device=device)
-
-
-    # xs_nn = latent_sde.sample(batch_size=xs.size(1)*16, ts=ts).cpu().numpy() #, bm=bm_vis
     # latent_size, context_size, hidden_size, noise_std
     hyperparam = f"{latent_size}_{context_size}_{hidden_size}_{noise_std}"
     bm_vis = torchsde.BrownianInterval(
         t0=t0, t1=t1, size=(batch_size*4, latent_size,), device=device, levy_area_approximation="space-time")
-    vis(xs, ts, latent_sde, bm_vis, norms_data, norms_data, train_dir+hyperparam, num_samples=60)
+    vis(xs, ts, latent_sde, bm_vis, norms_data, norms_data, train_dir+hyperparam, num_samples=9)
     # for i in range(3):
     #     for j in range(3):
     #         print("sample", i, "Dimension", j)
