@@ -538,8 +538,8 @@ def plot_empirical_measure(x_vals, z_vals, ax, bins=50):
 def vis1(xs, ts, lorenz, latent_sde, bm_vis, norms_vis, norms_data, train_dir, num_samples=30):
     fig = plt.figure(figsize=(20, 9))
     gs = gridspec.GridSpec(2, 2)
-    ax01 = fig.add_subplot(gs[0, 0], projection='3d')
-    ax00 = fig.add_subplot(gs[0, 1], projection='3d')
+    ax00 = fig.add_subplot(gs[0, 0], projection='3d')
+    ax01 = fig.add_subplot(gs[0, 1], projection='3d')
     ax10 = fig.add_subplot(gs[1, 0])
     ax11 = fig.add_subplot(gs[1, 1])
 
@@ -627,8 +627,8 @@ def vis1(xs, ts, lorenz, latent_sde, bm_vis, norms_vis, norms_data, train_dir, n
 def vis(xs, ts, latent_sde, bm_vis, norms_vis, norms_data, train_dir, num_samples=30):
     fig = plt.figure(figsize=(20, 9))
     gs = gridspec.GridSpec(2, 2)
-    ax01 = fig.add_subplot(gs[0, 0], projection='3d')
-    ax00 = fig.add_subplot(gs[0, 1], projection='3d')
+    ax00 = fig.add_subplot(gs[0, 0], projection='3d')
+    ax01 = fig.add_subplot(gs[0, 1], projection='3d')
     ax10 = fig.add_subplot(gs[1, 0])
     ax11 = fig.add_subplot(gs[1, 1])
 
