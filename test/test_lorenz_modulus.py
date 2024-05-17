@@ -285,7 +285,7 @@ def main(logger, loss_type):
     print("Finished Computing")
     model_size = model_size(model)
     # Save the model
-    torch.save(model.state_dict(), f"../test_result/best_model_{loss_type}.pth")
+    torch.save(model.state_dict(), f"../test_result/best_model_FNO_{loss_type}.pth")
 
     if loss_type == "JAC":
         with open('../test_result/Time/Modulus_FNO_elapsed_times_Jacobian.csv', 'w', newline='') as csvfile:

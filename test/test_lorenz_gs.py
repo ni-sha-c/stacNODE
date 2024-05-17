@@ -80,156 +80,7 @@ class ODE_MLP_skip(nn.Module):
     def forward(self, t, y):
         res = self.net(y) + self.skip(y)
         return self.output(res)
-    
-class ODE_HigherDim_CNN(nn.Module):
-    def __init__(self, y_dim=3, n_hidden=512, n_layers=2, n_heads=1):
-        super(ODE_HigherDim_CNN, self).__init__()
-        self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
-        self.conv2d = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
-        self.attention = nn.MultiheadAttention(embed_dim=3, num_heads=n_heads, bias=False)
-        self.GELU = nn.GELU()
-        self.net = nn.Sequential(
-            nn.Linear(3, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, 3)
-        )
 
-    def forward(self, t, y):
-        if y.dim() == 1: # needed for vmap
-            y = y.reshape(1, -1)
-        
-        y = torch.unsqueeze(y.T, 0)
-        y = self.conv2d(y)
-        y = self.conv2d(y)
-
-        batch_size, channels, length = y.size()
-        y = y.reshape(batch_size, length, channels)
-        y, _ = self.attention(y, y, y)  # Self-attention
-        y = y.view(batch_size, channels, length)
-
-        y = self.conv2d(y)
-        y = self.net(y.squeeze().T)
-        return y
-
-
-class ODE_CNN(nn.Module):
-
-    def __init__(self, y_dim=3, n_hidden=512, n_layers=2):
-        super(ODE_CNN, self).__init__()
-        self.batch_norm = nn.BatchNorm1d(y_dim)
-        self.GELU = nn.GELU()
-        self.conv1d = nn.Conv1d(3, 3, kernel_size=3, padding=1, bias=False)
-        self.cv2d_3 = nn.Conv2d(1, 1, kernel_size=(9,9), padding=4, bias=False)
-        self.cv2d_0 = nn.Conv2d(1, 1, kernel_size=(7,7), padding=3, bias=False)
-        # self.cv2d_1 = nn.Conv2d(1, 1, kernel_size=(3,3), padding=2, bias=False)
-        self.cv2d_1 = nn.Conv2d(1, 1, kernel_size=(3,2), padding=1, bias=False)
-        self.cv2d_2 = nn.Conv2d(1, 1, kernel_size=(5,5), padding=2, bias=False)
-        self.cv2d_4 = nn.Conv2d(1, 1, kernel_size=(5,7), padding=3, bias=False)
-        self.cv2d_5 = nn.Conv2d(1, 1, kernel_size=(7,7), padding=3, bias=False)
-
-        layers = [nn.Linear(3, n_hidden), nn.SiLU()]
-        for _ in range(n_layers - 1):
-            layers.extend([nn.Linear(n_hidden, n_hidden), nn.SiLU()])
-        layers.append(nn.Linear(n_hidden, y_dim))
-        self.net = nn.Sequential(*layers)
-        self.avg_pool = nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
-        self.gamma = torch.ones(3, requires_grad=True).cuda()
-        self.beta = torch.zeros(3, requires_grad=True).cuda()
-
-    def forward(self, t, y):
-        if y.dim() == 1: # needed for vmap
-            y = y.reshape(1, -1)
-
-        y = torch.unsqueeze(y.T, 0)
-        # y = nn.functional.normalize(y, dim=0)
-
-        y = self.cv2d_1(y)
-        y = y[:, :, :-1]
-        # y = self.avg_pool(y)
-        y = self.cv2d_1(y)
-        y = y[:, :, :-1]
-        y = self.cv2d_1(y)
-        y = y[:, :, :-1]
-        y = self .cv2d_1(y)
-        y = y[:, :, :-1]
-        y = self .cv2d_1(y)
-        y = y[:, :, :-1]
-        
-        y = self.net(y.squeeze().T)
-        return y
-
-
-# Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
-# y = (y - torch.mean(y, axis=1)) / (torch.std(y, axis=1) + 1e-15) * self.gamma + self.beta
-
-class GRUCell(nn.Module):
-
-
-    def __init__(self, input_size, hidden_size, bias=True):
-        super(GRUCell, self).__init__()
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.bias = bias
-        self.x2h = nn.Linear(input_size, 3 * hidden_size, bias=bias)
-        self.h2h = nn.Linear(hidden_size, 3 * hidden_size, bias=bias)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        std = 1.0 / math.sqrt(self.hidden_size)
-        for w in self.parameters():
-            w.data.uniform_(-std, std)
-    
-        
-    def forward(self, x, hidden):
-        
-        x = x.view(-1, x.size(1))
-        gate_x = self.x2h(x) 
-        gate_h = self.h2h(hidden)
-        i_r, i_i, i_n = gate_x.chunk(3, 1)
-        h_r, h_i, h_n = gate_h.chunk(3, 1)
-        resetgate = nn.Sigmoid(i_r + h_r)
-        inputgate = nn.Sigmoid(i_i + h_i)
-        newgate = nn.tanh(i_n + (resetgate * h_n))
-        
-        hy = newgate + inputgate * (hidden - newgate)
-        return hy
-
-class ODE_GRU(nn.Module):
-
-    def __init__(self, n_hidden, n_layers):
-        super(ODE_GRU, self).__init__()
-
-        self.gru_cell = GRUCell(3, n_hidden, n_layers)
-        self.net = nn.Linear(n_hidden, 3)
-        self.n_layers = n_layers
-        self.n_hidden = n_hidden
-        self.net = nn.Sequential(
-            nn.Linear(3, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.GELU(),
-            nn.Linear(n_hidden, 3)
-        )
-
-    def forward(self, t, y):
-        # input shape: (sequence length, input_dim)
-        if y.dim() == 1: # needed for vmap
-            y = y.reshape(1, -1)
-        elif y.dim() == 2:
-            y = torch.unsqueeze(y, 0)
-
-        h0 = torch.zeros(self.n_layers, y.size(0), self.n_hidden).cuda()
-        outs = []
-        hn = h0[0,:,:]
-        for seq in range(y.size(1)):
-            hn = self.gru_cell(y[:,seq,:], hn) 
-            outs.append(hn)
-
-        outs = outs[-1].squeeze()
-        outs = self.net(outs) 
-        return outs
 
 
 ##############
@@ -551,7 +402,7 @@ if __name__ == '__main__':
     print("device: ", device)
 
     # grid search
-    modelchoices = ['MLP']#['MLP','MLP_skip']
+    modelchoices = ['MLP_skip']#['MLP','MLP_skip']
     hiddenchoices = [1024]#[256, 512, 1024]
     layerchoices = [7]#[3, 5, 7]
     batchchoices = [1000, 2000]#[1000, 2000]
@@ -641,6 +492,7 @@ if __name__ == '__main__':
         # Save initial settings
         start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
         out_file = f"../test_result/{combination_str}.txt"
+        
         logger = logging.getLogger(combination_str)
         logger.setLevel(logging.INFO)
         file_handler = logging.FileHandler(out_file)
@@ -658,12 +510,6 @@ if __name__ == '__main__':
             m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
         elif args.model_type == "MLP_skip":
             m = ODE_MLP_skip(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
-        elif args.model_type == "CNN":
-            m = ODE_CNN(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
-        elif args.model_type == "HigherDimCNN":
-            m = ODE_HigherDim_CNN(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
-        elif args.model_type == "GRU":
-            m = ODE_GRU(n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
 
         print("Training...") # Train the model, return node
         epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type, args.batch_size, combination_str)
