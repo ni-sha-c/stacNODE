@@ -6,6 +6,7 @@ def tilted_tent_map(x, s=0.2):
     s = torch.tensor(s, dtype=torch.float64).to('cuda')
     # x = x.to(torch.float64).to('cuda')
     # x = torch.tensor(x.clone().detach()).cuda()
+    x = torch.tensor(x)
     x = x.to('cuda')
 
     if s == 0.:

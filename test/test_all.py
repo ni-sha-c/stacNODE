@@ -210,19 +210,34 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     if loss_type == "Jacobian":
         jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
         print("Jacobian loss!")
-        if ds_name == "KS":
+        if dim == 127:
             True_J = torch.ones(X_train.shape[0], dim, dim).double().to(device)
             Test_J = torch.ones(X_test.shape[0], dim, dim).double().to(device)
             for i in range(X_train.shape[0]):
-                if i % 500 == 0:
-                    print(i)
+                if i % 500 == 0: print(i)
                 x0 = X_train[i, :].requires_grad_(True)
                 cur_J = F.jacobian(lambda x: run_KS(x, c, dx, dt, dt*2, False, device), x0, vectorize=True)[-1]
-                True_J[i] = cur_J.double()
+                True_J[i] = cur_J
             for it in range(X_test.shape[0]):
                 x1 = X_test[it, :].requires_grad_(True)
                 cur_J_test = F.jacobian(lambda x: run_KS(x, c, dx, dt, dt*2, False, device), x1, vectorize=True)[-1]
-                Test_J[it] = cur_J_test.double()
+                Test_J[it] = cur_J_test
+        elif dim == 1:
+            True_J = torch.ones(X_train.shape[0], dim, dim).double().to(device)
+            Test_J = torch.ones(X_test.shape[0], dim, dim).double().to(device)
+            for i in range(X_train.shape[0]):
+                # print(X_train.shape)
+                c = X_train[i,:].requires_grad_(True)
+                t = dyn_sys(c)
+                # print(t, c)
+                r = torch.autograd.grad(t, c)
+                True_J[i] = r[0] #, create_graph=True
+                # print(True_J[i])
+            for i in range(X_test.shape[0]):
+                c = X_test[i,:].requires_grad_(True)
+                t = dyn_sys(c)
+                r = torch.autograd.grad(t, c)
+                Test_J[i] = r[0] #, create_graph=True
         else:
             f = lambda x: dyn_sys(0, x)
             true_jac_fn = torch.vmap(torch.func.jacrev(f))
@@ -234,15 +249,15 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     for i in range(epochs):
         start_time = time.time() 
         model.train()
-        if ds_name == "KS":
+        if dim == 127:
             model.double()
-            reg_param = torch.tensor(reg_param, dtype=torch.double)
+            # reg_param = torch.tensor(reg_param, dtype=torch.double)
             y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, method="rk4")[-1].double().to(device)
-        else:
-            if dim in (1,2):
-                y_pred = model(0, X_train).to(device)
-            else: 
-                y_pred = torchdiffeq.odeint(model, X_train.float(), t_eval_point, method="rk4")[-1].to(device)
+        elif dim in (1,2):
+            print(i)
+            y_pred = model(0, X_train).to(device)
+        else: 
+            y_pred = torchdiffeq.odeint(model, X_train.float(), t_eval_point, method="rk4")[-1].to(device)
         optimizer.zero_grad()
         train_loss = criterion(y_pred, Y_train) * (1/time_step/time_step)
 
@@ -252,11 +267,11 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 if dim in (1,2):
                     jacrev = torch.func.jacrev(model)
                     compute_batch_jac = torch.vmap(jacrev, chunk_size=1000)
-                    cur_model_J = compute_batch_jac(X).to(device)
+                    cur_model_J = compute_batch_jac(X_train).to(device)
                 elif (ds_name == "KS"):
                     integrated_model = lambda x: rk4_KS(model, x, t_eval_point).to(device)
                     jacrev_KS = torch.func.jacrev(integrated_model)
-                    compute_batch_jac = torch.func.vmap(jacrev_KS, in_dims=(0), chunk_size=5)
+                    compute_batch_jac = torch.func.vmap(jacrev_KS, in_dims=(0))
                     cur_model_J = compute_batch_jac(X_train).to(device)
                 else:
                     jacrev = torch.func.jacrev(model, argnums=1)
@@ -611,7 +626,7 @@ def lyap_exps_ks(dyn_sys, dyn_sys_info, true_traj, iters, u_list, dx, L, c, T, d
     # Initialize parameter
     dyn_sys_func, dyn_sys_name, org_dim = dyn_sys_info
     # reorthonormalization
-    dim = 15
+    dim = 30
     N = 100
     print("d", dim)
 
@@ -656,16 +671,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=1e-4)
+    parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_val", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=0)
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
+    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip"])
-    parser.add_argument("--s", type=int, default=0.5)
+    parser.add_argument("--s", type=float, default=0.5)
     parser.add_argument("--n_hidden", type=int, default=512)
     parser.add_argument("--n_layers", type=int, default=3)
     parser.add_argument("--reg_param", type=float, default=500)

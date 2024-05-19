@@ -237,3 +237,92 @@ def lyap_exps(dyn_sys_info, s, traj, iters):
             Q, R = torch.linalg.qr(Q)
             LE += torch.log(abs(torch.diag(R)))
         return LE/iters/time_step
+
+def compute_wasserstein(device, int_time, init_state, time_step, model_name, model):
+    ti, tf = int_time
+
+    # Load the saved model
+    # model = ODE_Lorenz().to(device)
+    # model_path = "../test_result/expt_lorenz/AdamW/"+str(time_step)+'/'+str(model_name)+'/model.pt'
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
+    print("Finished Loading model")
+
+    node_data = simulate(model, ti, tf, init_state, time_step)
+    node_data = node_data.detach().cpu().numpy()
+    true_data = simulate(lorenz, ti, tf, init_state, time_step).detach().cpu().numpy()
+
+    # Compute Wasserstein Distance
+    dist_x = scipy.stats.wasserstein_distance(node_data[:, 0], true_data[:, 0])
+    dist_y = scipy.stats.wasserstein_distance(node_data[:, 1], true_data[:, 1])
+    dist_z = scipy.stats.wasserstein_distance(node_data[:, 2], true_data[:, 2])
+    print(dist_x, dist_y, dist_z)
+    print(torch.norm(torch.tensor([dist_x, dist_y, dist_z])))
+
+    return
+
+
+def compute_timeavg(device, int_time, init_state, time_step, model_name):
+    ti, tf = int_time
+
+    # Load the saved model
+    # model = ODE_Lorenz().to(device)
+    # model_path = "../test_result/expt_lorenz/AdamW/"+str(time_step)+'/'+str(model_name)+'/model.pt'
+    # model.load_state_dict(torch.load(model_path))
+    model.eval()
+    print("Finished Loading model")
+
+    node_data = simulate(model, ti, tf, init_state, time_step)
+    node_data = node_data.detach().cpu().numpy()
+    true_data = simulate(lorenz, ti, tf, init_state, time_step).detach().cpu().numpy()
+
+    # Compute Wasserstein Distance
+    dist_x = np.mean(node_data[:, 0]) - np.mean(true_data[:, 0])
+    dist_y = np.mean(node_data[:, 1]) - np.mean(true_data[:, 1])
+    dist_z = np.mean(node_data[:, 2]) - np.mean(true_data[:, 2])
+    print(dist_x, dist_y, dist_z)
+    print(torch.norm(torch.tensor([dist_x, dist_y, dist_z])))
+
+    return
+
+
+##########
+## plot ##
+##########
+
+def plot_attractor(model, dyn_info, time, path):
+    print("plotting attractor!", path)
+    # generate true orbit and learned orbit
+    dyn, dim, time_step = dyn_info
+    tran_orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
+    true_o = torchdiffeq.odeint(dyn, tran_orbit[-1], torch.arange(0, time, time_step), method='rk4', rtol=1e-8)
+    learned_o = torchdiffeq.odeint(model.eval().to(device), tran_orbit[-1].to(device), torch.arange(0, time, time_step), method="rk4", rtol=1e-8).detach().cpu().numpy()
+
+    # create plot of attractor with initial point starting from 
+    fig, axs = subplots(2, 3, figsize=(24,12))
+    cmap = cm.plasma
+    num_row, num_col = axs.shape
+    for x in range(num_row):
+        for y in range(num_col):
+            orbit = true_o if x == 0 else learned_o
+            if y == 0:
+                axs[x,y].plot(orbit[0, 0], orbit[0, 1], '+', markersize=35, color=cmap.colors[0])
+                axs[x,y].scatter(orbit[:, 0], orbit[:, 1], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                axs[x,y].set_xlabel("X")
+                axs[x,y].set_ylabel("Y")
+            elif y == 1:
+                axs[x,y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color=cmap.colors[0])
+                axs[x,y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                axs[x,y].set_xlabel("X")
+                axs[x,y].set_ylabel("Z")
+            else:
+                axs[x,y].plot(orbit[0, 1], orbit[0, 2], '+', markersize=35, color=cmap.colors[0])
+                axs[x,y].scatter(orbit[:, 1], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
+                axs[x,y].set_xlabel("Y")
+                axs[x,y].set_ylabel("Z")
+            axs[x,y].tick_params(labelsize=42)
+            axs[x,y].xaxis.label.set_size(42)
+            axs[x,y].yaxis.label.set_size(42)
+    tight_layout()
+    fig.savefig(path, format='png', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
+    return

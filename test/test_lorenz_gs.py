@@ -198,7 +198,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 if current_relative_error < min_relative_error:
                     min_relative_error = current_relative_error
                     # Save the model
-                    torch.save(model.state_dict(), f"{args.train_dir}/best_model_mb.pth")
+                    torch.save(model.state_dict(), f"{args.train_dir}/best_model_mb_1.pth")
                     logger.info(f"Epoch {i}: New minimal relative error: {min_relative_error:.2f}%, model saved.")
 
                 y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[-1]
@@ -228,11 +228,11 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         plot_vector_field(model, path=MSE_plot_path, idx=1, t=0., N=100, device='cuda')
         jac_diff_train, jac_diff_test = None, None
     # Load the best relative error model
-    best_model = model
-    best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
-    best_model.eval()
-    RE_plot_path = f'{args.train_dir}minRE_'+plot_path+'.jpg'
-    plot_vector_field(best_model, path=RE_plot_path, idx=1, t=0., N=100, device='cuda')
+    # best_model = model
+    # best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb_jac.pth"))
+    # best_model.eval()
+    # RE_plot_path = f'{args.train_dir}minRE_'+plot_path+'.jpg'
+    # plot_vector_field(best_model, path=RE_plot_path, idx=1, t=0., N=100, device='cuda')
     return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test
 
 
@@ -402,50 +402,13 @@ if __name__ == '__main__':
     print("device: ", device)
 
     # grid search
-    modelchoices = ['MLP_skip']#['MLP','MLP_skip']
+    modelchoices = ['MLP']#['MLP','MLP_skip']
     hiddenchoices = [1024]#[256, 512, 1024]
     layerchoices = [7]#[3, 5, 7]
-    batchchoices = [1000, 2000]#[1000, 2000]
-    weightdecay = [1e-3, 1e-4]#1[1e-3, 1e-4]
-    # regpchoices = [100, 500, 1000]
-    # combinations = list(itertools.product(modelchoices, epochchoices, transchoices, hiddenchoices, layerchoices, regpchoices))
-    combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, weightdecay))
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--time_step", type=float, default=1e-2)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=10000)
-    parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=8000)
-    parser.add_argument("--num_trans", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=1000, choices=[1000, 2000, None])
-    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
-    parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
-    parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
-    parser.add_argument("--n_hidden", type=int, default=512)
-    parser.add_argument("--n_layers", type=int, default=4)
-    parser.add_argument("--reg_param", type=float, default=3000)
-    parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/gs/train_MLPskip_MSE_new/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/", "../plot/Vector_field/train_MLPskip_MSE_new/", "../plot/Vector_field/train_MLP_MSE_new/"])
-
-    # Initialize Settings
-    args = parser.parse_args()
-    if not os.path.exists(args.train_dir):
-        os.makedirs(args.train_dir)
-    dim = 3
-    dyn_sys_func = lorenz if args.dyn_sys == "lorenz" else rossler
-    dyn_sys_info = [dyn_sys_func, dim, args.time_step]
-    criterion = torch.nn.MSELoss()
-
-    # grid search
-    modelchoices = ['MLP']#['MLP','MLP_skip']
-    hiddenchoices = [256, 512, 1024]#[256, 512, 1024]
-    layerchoices = [3, 5, 7]#[3, 5, 7]
     # batchchoices = [1000, 2000]#[1000, 2000]
-    # weightdecay = [1e-3, 1e-4]#1[1e-3, 1e-4]
-    epochchoices = [8000, 10000]
-    regpchoices = [500, 1000]
+    # weightdecay = [1e-4]#1[1e-3, 1e-4]
+    epochchoices = [8000]
+    regpchoices = [1000]
     combinations = list(itertools.product(modelchoices, epochchoices, hiddenchoices, layerchoices, regpchoices))
     # combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, epoch))
 
@@ -453,9 +416,9 @@ if __name__ == '__main__':
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=10000)
+    parser.add_argument("--num_epoch", type=int, default=8000)
     parser.add_argument("--num_train", type=int, default=10000)
-    parser.add_argument("--num_test", type=int, default=6000)
+    parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--batch_size", type=int, default=None, choices=[1000, 2000, None])
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
@@ -488,6 +451,7 @@ if __name__ == '__main__':
         # combination_str = f"2nd_{args.loss_type}: {args.model_type}_{args.n_hidden}_{args.n_layers}_{args.batch_size}_{args.weight_decay}"
         combination_str = f"Comb_{args.loss_type}{index + 1}: {args.model_type}_{args.num_epoch}_{args.n_hidden}_{args.n_layers}_{args.reg_param}"
         print(combination_str)
+
 
         # Save initial settings
         start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
@@ -530,7 +494,7 @@ if __name__ == '__main__':
 
         # Plot vector field & phase space
         best_model = m
-        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb.pth"))
+        best_model.load_state_dict(torch.load(f"{args.train_dir}/best_model_mb_1.pth"))
         best_model.eval()
         percentage_err = plot_vf_err(best_model, dyn_sys_info, args.model_type, args.loss_type, vf_err_path)
         # plot_attractor(best_model, dyn_sys_info, 50, phase_path)
