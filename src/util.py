@@ -238,6 +238,7 @@ def lyap_exps(dyn_sys_info, s, traj, iters):
             LE += torch.log(abs(torch.diag(R)))
         return LE/iters/time_step
 
+
 def compute_wasserstein(device, int_time, init_state, time_step, model_name, model):
     ti, tf = int_time
 

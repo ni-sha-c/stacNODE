@@ -2,12 +2,14 @@ import torch
 from matplotlib.pyplot import *
 
 # # Tilted Tentmap, 0.5
-def tilted_tent_map(x, s=0.2):
+def tilted_tent_map(x, s):
     s = torch.tensor(s, dtype=torch.float64).to('cuda')
     # x = x.to(torch.float64).to('cuda')
     # x = torch.tensor(x.clone().detach()).cuda()
-    x = torch.tensor(x)
-    x = x.to('cuda')
+    if isinstance(x, torch.Tensor):
+        x = x.cuda()
+    else:
+        x = torch.tensor(x).cuda()
 
     if s == 0.:
         noise = 1e-12*torch.randn(1).to('cuda')
@@ -17,12 +19,14 @@ def tilted_tent_map(x, s=0.2):
             return 2/(1-s)*(2-x) + noise
     else:
         if x < 1+s:
-            return 2/(1+s)*x
+            print("1:", x, s, 2/(1+s)*x)
+            return (2/(1+s))*x
         else:
-            return 2/(1-s)*(2-x)
+            print("2:", x, s, 2/(1-s)*(2-x))
+            return (2/(1-s))*(2-x)
 
 # Pinched Tent Map
-def pinched_tent_map(x, s=0.):
+def pinched_tent_map(x, s):
     s = torch.tensor(s, dtype=torch.float64)
     if isinstance(x, torch.Tensor):
         x = x.cuda()
@@ -38,10 +42,10 @@ def pinched_tent_map(x, s=0.):
         return (4*(2-x))/(1 + s + torch.sqrt((1+s)**2 - 4* s*(2-x)))
 
 #Plucked Tentmap # 3, 0.6
-def plucked_tent_map(x, s=0.6):
+def plucked_tent_map(x, s):
     n = torch.tensor(3)
-    s = torch.tensor(s, dtype=torch.float64)
-    x = x.to(torch.float64) 
+    s = torch.tensor(s)
+    # x = x.to(torch.float64) 
     
     noise = 1e-12*torch.randn(1)
     

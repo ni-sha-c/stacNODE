@@ -195,16 +195,16 @@ def main(logger, loss_type):
     test_list = [dataset[4], dataset[5]]
 
     train_data = TensorDataset(*train_list)
-    val_data = TensorDataset(*val_list)
+    test_data = TensorDataset(*test_list)
     dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
     print("Mini-batch: ", len(dataloader), dataloader.batch_size)
 
     model = FNO(
         in_channels=3,
         out_channels=3,
-        num_fno_modes=3,
-        padding=4,
+        num_fno_modes=4,
+        padding=5,
         dimension=1,
         latent_channels=128
     ).to('cuda')
@@ -220,12 +220,12 @@ def main(logger, loss_type):
 
     ### Training Loop ###
     n_store, k  = 100, 0
-    num_epochs = 2000
+    num_epochs = 5000
     time_step = 0.01
     jac_diff_train, jac_diff_test = torch.empty(n_store+1), torch.empty(n_store+1)
     print("Computing analytical Jacobian")
     t = torch.linspace(0, time_step, 2).cuda()
-    threshold = 0.001
+    threshold = 0.00005
     f = lambda x: torchdiffeq.odeint(lorenz, x, t, method="rk4")[1]
     torch.cuda.empty_cache()
     timer = Timer()
@@ -244,7 +244,7 @@ def main(logger, loss_type):
     print("Beginning training")
     for epoch in range(num_epochs):
         start_time = time.time()
-        full_loss = 0.0
+        full_loss, full_test_loss = 0.0, 0.0
         idx = 0
         for data in dataloader:
             optimizer.zero_grad()
@@ -277,7 +277,15 @@ def main(logger, loss_type):
             
         full_loss.backward()
         optimizer.step()
-        print("epoch: ", epoch, "loss: ", full_loss)
+
+        for test_data in test_dataloader:
+            y_test_true = test_data[1].to('cuda')
+            y_test_pred = model(test_data[0].unsqueeze(dim=2).to('cuda'))
+            test_loss = criterion(y_test_pred.view(batch_size, -1), y_test_true.view(batch_size, -1))
+            full_test_loss += test_loss
+        
+        print("epoch: ", epoch, "loss: ", full_loss.item(), "test loss: ", full_test_loss.item())
+
         if full_loss < threshold:
             print("Stopping early as the loss is below the threshold.")
             break

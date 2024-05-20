@@ -12,6 +12,7 @@ import logging
 import os
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
+import scipy
 
 import sys
 sys.path.append('..')
@@ -27,7 +28,7 @@ time_step= 0.01
 ind_func = 0
 s = 0.2
 hidden = 256
-model = 'MLP'
+model = 'MLP_skip'
 num_trajectories = 5000
 long_len_T = 500*int(1/time_step)
 init = "outside"
@@ -47,6 +48,9 @@ if model == "MLP_skip":
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
     mse_model = ODE_MLP_skip(y_dim=dim, n_hidden=512, n_layers=5).to(device)
     best_model = ODE_MLP_skip(y_dim=dim, n_hidden=1024, n_layers=5).to(device)
+elif model == "FNO":
+    MSE_path = 
+    JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
 else:
     MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
@@ -125,7 +129,7 @@ dist_x_mse = scipy.stats.wasserstein_distance(mse_long[:, 0], true_long[:, 0])
 dist_y_mse = scipy.stats.wasserstein_distance(mse_long[:, 1], true_long[:, 1])
 dist_z_mse = scipy.stats.wasserstein_distance(mse_long[:, 2], true_long[:, 2])
 print("MSE", dist_x_mse, dist_y_mse, dist_z_mse)
-print("MSE", torch.norm(torch.tensor([dist_x, dist_y, dist_z])))
+print("MSE", torch.norm(torch.tensor([dist_x_mse, dist_y_mse, dist_z_mse])))
 
 # Compute Time avg
 ta_x = np.mean(learned_long[:, 0]) - np.mean(true_long[:, 0])
@@ -137,5 +141,23 @@ print(torch.norm(torch.tensor([ta_x, ta_y, ta_z])))
 ta_x = np.mean(mse_long[:, 0]) - np.mean(true_long[:, 0])
 ta_y = np.mean(mse_long[:, 1]) - np.mean(true_long[:, 1])
 ta_z = np.mean(mse_long[:, 2]) - np.mean(true_long[:, 2])
-print("Time Avg JAC", ta_x, ta_y, ta_z)
+print("Time Avg MSE", ta_x, ta_y, ta_z)
 print(torch.norm(torch.tensor([ta_x, ta_y, ta_z])))
+
+# JAC 0.46837250431342975 0.47540335819703994 0.1304571068406105
+# JAC tensor(0.68000, dtype=torch.float64)
+# MSE 10.582139537135017 11.21341423125957 11.053471397333142
+# MSE tensor(18.9711, dtype=torch.float64)
+# Time Avg JAC 0.45856512 0.45624435 0.08457565
+# tensor(0.65238)
+# Time Avg JAC 9.518159 9.514663 7.112383
+# tensor(15.22203)
+
+# JAC 0.06574776913565583 0.0722477601816878 0.10477456110477447
+# JAC tensor(0.14325, dtype=torch.float64)
+# MSE 0.4761774812091239 0.5246118765028549 1.1569373764801008
+# MSE tensor(1.35664, dtype=torch.float64)
+# Time Avg JAC -0.022128642 -0.02018851 0.047182083
+# tensor(0.05589)
+# Time Avg JAC -0.07179555 -0.06568557 0.769907
+# tensor(0.77603)

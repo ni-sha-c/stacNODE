@@ -69,6 +69,7 @@ def simulate_map(model, s, dim, n_iter, x):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     traj = torch.zeros(n_iter, dim).to(device)
     for i in range(n_iter):
+        print("x", x)
         traj[i] = x
         if (model == tilted_tent_map) or (model == pinched_tent_map) or (model == plucked_tent_map) or (model == baker):
             cur_pred = model(x, s)
@@ -222,21 +223,21 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                 x1 = X_test[it, :].requires_grad_(True)
                 cur_J_test = F.jacobian(lambda x: run_KS(x, c, dx, dt, dt*2, False, device), x1, vectorize=True)[-1]
                 Test_J[it] = cur_J_test
-        elif dim == 1:
-            True_J = torch.ones(X_train.shape[0], dim, dim).double().to(device)
-            Test_J = torch.ones(X_test.shape[0], dim, dim).double().to(device)
+        elif dim in (1, 2):
+            True_J = torch.ones(X_train.shape[0], dim, dim).to(device)
+            Test_J = torch.ones(X_test.shape[0], dim, dim).to(device)
             for i in range(X_train.shape[0]):
                 # print(X_train.shape)
                 c = X_train[i,:].requires_grad_(True)
-                t = dyn_sys(c)
+                t = dyn_sys(c, s)
                 # print(t, c)
-                r = torch.autograd.grad(t, c)
+                r = torch.autograd.grad(t.sum(), c)
                 True_J[i] = r[0] #, create_graph=True
                 # print(True_J[i])
             for i in range(X_test.shape[0]):
                 c = X_test[i,:].requires_grad_(True)
-                t = dyn_sys(c)
-                r = torch.autograd.grad(t, c)
+                t = dyn_sys(c, s)
+                r = torch.autograd.grad(t.sum(), c)
                 Test_J[i] = r[0] #, create_graph=True
         else:
             f = lambda x: dyn_sys(0, x)
@@ -254,7 +255,6 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
             # reg_param = torch.tensor(reg_param, dtype=torch.double)
             y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, method="rk4")[-1].double().to(device)
         elif dim in (1,2):
-            print(i)
             y_pred = model(0, X_train).to(device)
         else: 
             y_pred = torchdiffeq.odeint(model, X_train.float(), t_eval_point, method="rk4")[-1].to(device)
@@ -265,9 +265,9 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
             with timer:
                 # Compute Jacobian
                 if dim in (1,2):
-                    jacrev = torch.func.jacrev(model)
-                    compute_batch_jac = torch.vmap(jacrev, chunk_size=1000)
-                    cur_model_J = compute_batch_jac(X_train).to(device)
+                    jacrev = torch.func.jacrev(model, argnums=1)
+                    compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0),chunk_size=1000)
+                    cur_model_J = compute_batch_jac(0, X_train).to(device)
                 elif (ds_name == "KS"):
                     integrated_model = lambda x: rk4_KS(model, x, t_eval_point).to(device)
                     jacrev_KS = torch.func.jacrev(integrated_model)
@@ -313,7 +313,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                         test_model_J = compute_batch_jac(model, X_test).to(device)
                     test_jac_norm_diff = criterion(Test_J, test_model_J)
                     jac_diff_train[k], jac_diff_test[k] = jac_norm_diff, test_jac_norm_diff
-                    if (dim != 1) and (dim != 2) and (dim != 127):
+                    if dim == 3:
                         JAC_plot_path = f'{train_dir}JAC_'+str(i)+'.jpg'
                         plot_vector_field(model, ds_name, dim, path=JAC_plot_path, idx=idx, t=0., N=100, device='cuda')
 
@@ -330,8 +330,6 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         elapsed_time_train.append(elapsed_time)
 
     if loss_type == "Jacobian":
-        # for i in [0, 1, 50, -2, -1]:
-        #     print("Point:", X_train[i].detach().cpu().numpy(), "\n", "True:", "\n", True_J[i].detach().cpu().numpy(), "\n", "JAC:", "\n", cur_model_J[i].detach().cpu().numpy())
         jac_time_path = f'../test_result/Time/JAC_{ds_name}_{model_type}.csv'
         create_csv(jac_time_path, timer.time_per_epoch)
     else:
@@ -345,12 +343,14 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     best_model.load_state_dict(torch.load(f"{train_dir}/best_model.pth"))
     best_model.eval()
     RE_plot_path = f'{train_dir}minRE_{loss_type}.jpg'
-    if dim in (1,2):
-        plot_map(model, dim, s, 1000, torch.randn(dim), RE_plot_path)
+    RE_True_plot_path = f'{train_dir}True_{loss_type}.jpg'
+    if dim == 1:
+        plot_map(model, dyn_sys, dim, s, 1000, torch.randn(dim), RE_plot_path)
+        # plot_map(dyn_sys, dim, s, 1000, torch.randn(dim), RE_True_plot_path)
     elif dim == 127:
         plot_KS(Y_test, dx, n, c, Y_test.shape[0]*dt, dt, True, False, args.loss_type)
         plot_KS(y_pred_test, dx, n, c, Y_test.shape[0]*dt, dt, False, True, args.loss_type)
-    else:
+    elif (dim == 3) or (dim == 4):
         plot_vector_field(best_model, ds_name, dim, path=RE_plot_path, idx=idx, t=0., N=100, device='cuda')
     return ep_num, loss_hist, test_loss_hist, jac_diff_train, jac_diff_test, Y_test
 
@@ -373,11 +373,23 @@ def plot_loss(epochs, train, test, path):
     tight_layout()
     savefig(path, bbox_inches ='tight', pad_inches = 0.1)
 
-def plot_map(model, dim, s, n_iter, init_state, pdf_path):
+def plot_map(model, dyn_sys, dim, s, n_iter, init_state, pdf_path):
     fig, ax = subplots(figsize=(24,13))
     colors = cm.viridis(np.linspace(0, 1, 5))
-    whole_traj = simulate_map(model, s, dim, n_iter, torch.randn(dim)).detach().cpu().numpy()
-    ax.scatter(whole_traj[0:-1], whole_traj[1:], color=colors[0], linewidth=6, alpha=0.8, label='s = ' + str(s))
+    x_orig = torch.linspace(0, 2, 10000).to('cuda')
+    # whole_traj = simulate_map(model, s, dim, n_iter, torch.randn(dim)).detach().cpu().numpy()
+    whole_true_traj = np.ones((10000))
+    for j in range(10000):
+        whole_true_traj[j] = dyn_sys(x_orig[j], s)
+    # whole_true_traj = whole_true_traj.detach().cpu().numpy()
+    
+    x = x_orig.reshape(-1, 1)
+    print("x", x.shape)
+    whole_traj = model(0, x)
+    whole_traj = whole_traj.detach().cpu().numpy()
+    # ax.scatter(whole_traj[0:-1], whole_traj[1:], color=colors[0], linewidth=6, alpha=0.8, label='s = ' + str(s))
+    ax.scatter(x_orig.detach().cpu().numpy(), whole_true_traj, color=colors[3], linewidth=8, alpha=0.6, label=str("True: ") + 's = ' + str(s))
+    ax.scatter(x_orig.detach().cpu().numpy(), whole_traj, color=colors[0], linewidth=6, alpha=0.6, label=str("Learned: ") + 's = ' + str(s))
     ax.set_xlabel(r"$x_n$", fontsize=44)
     ax.set_ylabel(r"$x_{n+1}$", fontsize=44)
     ax.tick_params(labelsize=40)
@@ -564,14 +576,52 @@ def rk4(x, f, dt):
     k3 = f(0, x + dt*k2/2)
     k4 = f(0, x + dt*k3)
     return x + dt/6*(k1 + 2*k2 + 2*k3 + k4)
+
+def rk4_map(x, f, dt, s):
+    k1 = f(x, s)
+    k2 = f(x + dt*k1/2, s)
+    k3 = f(x + dt*k2/2, s)
+    k4 = f(x + dt*k3, s)
+    return x + dt/6*(k1 + 2*k2 + 2*k3 + k4)
+
+def lyap_exps_baker(dyn_sys, dyn_sys_info, true_traj, iters, time_step, optim_name, method, path, s):
+    ''' Compute Lyapunov Exponents 
+        args: path = path to model '''
+
+    # Initialize parameter
+    dyn_sys_func, dyn_sys_name, dim = dyn_sys_info
+
+    # QR Method where U = tangent vector, V = regular system
+    U = torch.eye(dim).to('cuda')
+    lyap_exp = [] #empty list to store the lengths of the orthogonal axes
+    real_time = iters * time_step
+    t_eval_point = torch.linspace(0, 1., 2)
+
+    for i in range(iters):
+        #update x0
+        x0 = true_traj[i]
+        cur_J = F.jacobian(lambda x: dyn_sys_func(x, s), x0)
+        #print(cur_J)
+        
+        J = torch.matmul(cur_J, U)
+
+        # QR Decomposition for J
+        Q, R = torch.linalg.qr(J)
+        lyap_exp.append(torch.log(abs(R.diagonal())).detach().cpu().numpy())
+        U = Q #new axes after iteration
+
+    LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
+
+    return torch.tensor(LE)
     
 def lyap_exps(dyn_sys_info, s, traj, iters):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     dyn_type, model, dim, time_step = dyn_sys_info
     LE = torch.zeros(dim).to(device)
     traj_gpu = traj.to(device)
+    print("traj", traj)
 
-    if dim in (1,2):
+    if dim == 1:
         le = 0
         for t in range(traj_gpu.shape[0]):
             if (model == tilted_tent_map) or (model == plucked_tent_map) or (model == pinched_tent_map) or (model == baker):
@@ -581,7 +631,7 @@ def lyap_exps(dyn_sys_info, s, traj, iters):
         return le/traj_gpu.shape[0]
     else:
         if dyn_type == "KS":
-            lower_dim = 15
+            lower_dim = 30
             Q = torch.eye(*(dim, lower_dim)).to(device).double()
             # True
             if model == run_KS:
@@ -680,7 +730,7 @@ if __name__ == '__main__':
     parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler", "baker", "tilted_tent_map", "plucked_tent_map", "pinched_tent_map", "KS", "hyperchaos"])
     parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip"])
-    parser.add_argument("--s", type=float, default=0.5)
+    parser.add_argument("--s", type=float, default=0.2)
     parser.add_argument("--n_hidden", type=int, default=512)
     parser.add_argument("--n_layers", type=int, default=3)
     parser.add_argument("--reg_param", type=float, default=500)
@@ -761,11 +811,10 @@ if __name__ == '__main__':
         plot_map(dyn_sys_func, dim, args.s, 3000, torch.randn(dim), true_plot_path_1)
 
     # compute LE
-    if (dim == 1) or (dim == 2):
-        print("dim is 1 or 2")
-        true_traj = simulate_map(dyn_sys_func, args.s, dim, 1000, torch.randn(dim))
-        learned_traj = simulate_map(m, args.s, dim, 1000, torch.randn(dim))
-    elif (dim == 127):
+    if dim in (1, 2):
+        true_traj = dataset[4]
+        learned_traj = simulate_map(m, args.s, dim, dataset[4].shape[0], dataset[4][0])
+    elif dim == 127:
         time = 3000
         true_traj = traj_[:time]
         print("shape", true_traj.shape, traj[0])
@@ -783,27 +832,34 @@ if __name__ == '__main__':
     print("Computing LEs of NN...")
     learned_LE = lyap_exps([args.dyn_sys, m, dim, args.time_step], args.s, learned_traj, true_traj.shape[0]).detach().cpu().numpy()
     print("Computing true LEs...")
-    True_LE = lyap_exps([args.dyn_sys, dyn_sys_func, dim, args.time_step], args.s, true_traj, true_traj.shape[0]).detach().cpu().numpy()
+    if dim == 2:
+        True_LE = lyap_exps_baker(args.dyn_sys, [dyn_sys_func, "baker", dim], true_traj, true_traj.shape[0], time_step= args.time_step, optim_name="AdamW", method="rk4", path=None, s=args.s)
+    else:
+        True_LE = lyap_exps([args.dyn_sys, dyn_sys_func, dim, args.time_step], args.s, true_traj, true_traj.shape[0]).detach().cpu().numpy()
     print("rk4 LE: ", True_LE)
     truemean_x = torch.mean(true_traj[:, 0])
-    truemean_z = torch.mean(true_traj[:, 2])
     learned_mean_x = torch.mean(learned_traj[:, 0])
-    learned_mean_z = torch.mean(learned_traj[:, 2])
     truevar_x = torch.var(true_traj[:, 0])
-    truevar_z = torch.var(true_traj[:, 2])
     learned_var_x = torch.var(learned_traj[:, 0])
-    learned_var_z = torch.var(learned_traj[:, 2])
+    if dim > 2:
+        truemean_z = torch.mean(true_traj[:, 2])
+        learned_mean_z = torch.mean(learned_traj[:, 2])
+        truevar_z = torch.var(true_traj[:, 2])
+        learned_var_z = torch.var(learned_traj[:, 2])
 
     logger.info("%s: %s", "Training Loss", str(loss_hist[-1]))
     logger.info("%s: %s", "Test Loss", str(test_loss_hist[-1]))
     logger.info("%s: %s", "True Mean x", str(truemean_x))
-    logger.info("%s: %s", "True Mean z", str(truemean_z))
     logger.info("%s: %s", "Learned Mean x", str(learned_mean_x))
-    logger.info("%s: %s", "Learned Mean z", str(learned_mean_z))
     logger.info("%s: %s", "True Var x", str(truevar_x))
-    logger.info("%s: %s", "True Var z", str(truevar_z))
     logger.info("%s: %s", "Learned Var x", str(learned_var_x))
-    logger.info("%s: %s", "Learned Var z", str(learned_var_z))
+    if dim > 2:
+        logger.info("%s: %s", "True Mean z", str(truemean_z))
+        logger.info("%s: %s", "Learned Mean z", str(learned_mean_z))
+        logger.info("%s: %s", "True Var z", str(truevar_z))
+        logger.info("%s: %s", "Learned Var z", str(learned_var_z))
+
+
     if args.loss_type == "Jacobian":
         logger.info("%s: %s", "Jacobian term Training Loss", str(jac_train_hist[-1]))
         logger.info("%s: %s", "Jacobian term Test Loss", str(jac_test_hist[-1]))

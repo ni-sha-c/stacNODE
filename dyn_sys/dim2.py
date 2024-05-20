@@ -28,7 +28,7 @@ import json
     
 #     return torch.stack([x, y])
 
-def baker(X, s3=0.2):
+def baker(X, s3):
 
     '''From "Efficient Computation of Linear Response of Chaotic Attractors with
 One-Dimensional Unstable Manifolds" by Chandramoorthy et al. 2022 '''
