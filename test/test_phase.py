@@ -31,9 +31,6 @@ model = 'MLP'
 num_trajectories = 5000
 long_len_T = 500*int(1/time_step)
 init = "outside"
-# short_len_T = 50*int(1/time_step)
-# true_initial_condition = torch.randn(1, dim)  # Initial condition for the true model
-# true_initial_condition = torch.tensor([-9.116407, -3.381641, 33.748295]).reshape(1, dim) # after time 50
 
 if init == "inside":
     true_initial_condition = torch.tensor([-9.116407, -3.381641, 33.748295]).reshape(1, dim)
@@ -41,6 +38,7 @@ if init == "inside":
 else:
     true_initial_condition = torch.tensor([-15., -15., 5.]).reshape(1, dim)
     pdf_path = '../plot/phase_outside_all_'+str(model)+'.jpg'
+    pdf_path_2 = '../plot/phase_outside_all_res.jpg'
 
 model='MLP_skip'
 MSE_MS_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
@@ -121,11 +119,8 @@ mse_mlp_long = np.squeeze(mse_mlp_long)
 
 
 # create plot of attractor with initial point starting from 
-fig, axs = subplots(1, 5, figsize=(56,7))
-# fig, axs = subplots(ncols=6,figsize=(42,7), gridspec_kw={"width_ratios":[1,1,1,1.,1., 0.05]})
-cmap = cm.hsv
-traj = [true_long, mse_mlp_long, mse_ms_long, learned_mlp_long, learned_ms_long]
-title = ['TRUE', 'MSE_MLP', 'MSE_Res', 'JAC_MLP', 'JAC_Res']
+traj = [true_long, mse_mlp_long, learned_mlp_long]
+title = ['TRUE', 'MSE_MLP', 'JAC_MLP']
 
 
 import matplotlib.pyplot as plt
@@ -133,16 +128,16 @@ import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Create figure and subplots
-fig, axs = plt.subplots(1, 5, figsize=(42, 7), constrained_layout=True)
+fig, axs = plt.subplots(1, 3, figsize=(28, 7), constrained_layout=True)
 
 # Compute overall min and max for the colorbar
-all_orbit_values = np.concatenate([orbit[:, 2] for orbit in traj])
-vmin, vmax = all_orbit_values.min(), all_orbit_values.max()
+# all_orbit_values = np.concatenate([orbit[:, 2] for orbit in traj])
+vmin, vmax = true_long[:, 2].min(), true_long[:, 2].max()
 
-for y in range(5):
+for y in range(3):
     orbit = traj[y]
-    axs[y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color=cmap(0), linewidth=40)
-    scatter = axs[y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s=6, cmap='plasma', alpha=0.5, vmin=vmin, vmax=vmax)
+    axs[y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color='black', linewidth=40)
+    scatter = axs[y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s=20, cmap='plasma_r', alpha=0.7, vmin=vmin, vmax=vmax)
     axs[y].set_xlabel("X")
     if y == 0:
         axs[y].set_ylabel("Z")
@@ -153,38 +148,39 @@ for y in range(5):
 
 # Create a colorbar for the scatter plots
 divider = make_axes_locatable(axs[-1])
-cax = divider.append_axes("right", size="5%", pad=0.1)
+cax = divider.append_axes("right", size="5%", pad=0.2)
 cbar = fig.colorbar(scatter, cax=cax)
 cbar.ax.tick_params(labelsize=45)  # Set colorbar tick label size
 
 fig.savefig(pdf_path, format='png', dpi=400, bbox_inches='tight', pad_inches=0.1)
 
 
-# # fig, (ax1, ax2, ax3, ax4, ax5, cax) = plt.subplots(ncols=5,figsize=(42,7), gridspec_kw={"width_ratios":[1,1,1,1,1, 0.05]})
-# fig.subplots_adjust(wspace=0.3)
-# # im  = ax1.imshow(np.random.rand(11,8))
-# # im2 = ax2.imshow(np.random.rand(11,8))
-# # ax1.set_ylabel("y label")
-# # ax1.set_xlabel("")
-# # fig.colorbar(im, cax=cax)
 
+traj = [true_long, mse_ms_long, learned_ms_long]
+title = ['TRUE', 'MSE_Res', 'JAC_Res']
+# Create figure and subplots
+fig, axs = plt.subplots(1, 3, figsize=(28, 7), constrained_layout=True)
 
-# for y in range(5):
-#     orbit = traj[y]
-#     axs[y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color=cmap.colors[0], linewidth=40)
-#     if y == 1:
-#         scatter = axs[y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
-#     else:
-#         axs[y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s = 6, cmap='plasma', alpha=0.5)
-#     axs[y].set_xlabel("X")
-#     if y == 0:
-#         axs[y].set_ylabel("Z")
-#     axs[y].tick_params(labelsize=45)
-#     axs[y].xaxis.label.set_size(45)
-#     axs[y].yaxis.label.set_size(45)
-#     axs[y].set_title(title[y], fontsize=45)
+# Compute overall min and max for the colorbar
+# all_orbit_values = np.concatenate([orbit[:, 2] for orbit in traj])
+# vmin, vmax = all_orbit_values.min(), all_orbit_values.max()
 
-# cbar = fig.colorbar(scatter, ax=axs)
-# cbar.ax.tick_params(labelsize=45)  # Set colorbar tick label size
-# # tight_layout()
-# fig.savefig(pdf_path, format='png', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
+for y in range(3):
+    orbit = traj[y]
+    axs[y].plot(orbit[0, 0], orbit[0, 2], '+', markersize=35, color='black', linewidth=40)
+    scatter = axs[y].scatter(orbit[:, 0], orbit[:, 2], c=orbit[:, 2], s=20, cmap='plasma_r', alpha=0.7, vmin=vmin, vmax=vmax)
+    axs[y].set_xlabel("X")
+    if y == 0:
+        axs[y].set_ylabel("Z")
+    axs[y].tick_params(labelsize=45)
+    axs[y].xaxis.label.set_size(45)
+    axs[y].yaxis.label.set_size(45)
+    axs[y].set_title(title[y], fontsize=45)
+
+# Create a colorbar for the scatter plots
+divider = make_axes_locatable(axs[-1])
+cax = divider.append_axes("right", size="5%", pad=0.2)
+cbar = fig.colorbar(scatter, cax=cax)
+cbar.ax.tick_params(labelsize=45)  # Set colorbar tick label size
+
+fig.savefig(pdf_path_2, format='png', dpi=400, bbox_inches='tight', pad_inches=0.1)

@@ -188,8 +188,8 @@ def main(logger, loss_type):
 
     print("Creating Dataset")
     n_train = 3000
-    batch_size = 50
-    dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=100, n_val=100, n_trans=0)
+    batch_size = 200
+    dataset = create_data([lorenz, 3, 0.01], n_train=n_train, n_test=500, n_val=0, n_trans=0)
     train_list = [dataset[0], dataset[1]]
     val_list = [dataset[2], dataset[3]]
     test_list = [dataset[4], dataset[5]]
@@ -261,8 +261,6 @@ def main(logger, loss_type):
                     x = data[0].unsqueeze(dim=2).to('cuda')
                     cur_model_J = jac(x)
                     squeezed_J = cur_model_J[:, :, 0, :, :, 0]
-                    #print("non-zero element", torch.count_nonzero(squeezed_J)) -> 180 -> 20 x 3 x 3 not 3600 with would mean that it is actually computing 20 x 20 x 3 x 3
-                    # print("example", squeezed_J[:, :, 0, :], squeezed_J[0, :, 0, :], squeezed_J[:, :, 0, :].shape)
                     learned_J = [squeezed_J[in_out_pair, :, in_out_pair, :] for in_out_pair in range(batch_size)]
                     learned_J = torch.stack(learned_J, dim=0).cuda()
 

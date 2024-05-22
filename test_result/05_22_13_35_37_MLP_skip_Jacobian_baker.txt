@@ -1,0 +1,22 @@
+time_step: 1.0
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 20000
+num_train: 3000
+num_test: 3000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: baker
+model_type: MLP_skip
+s: 0.0
+n_hidden: 256
+n_layers: 2
+reg_param: 100.0
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 254.718063354 Test: 10.509783745
+Epoch 0: New minimal relative error: 10.51%, model saved.
+Epoch: 200 Train: 19.725877762 Test: 11.165081024
+Epoch: 400 Train: 13.513988495 Test: 10.161857605
+Epoch 400: New minimal relative error: 10.16%, model saved.

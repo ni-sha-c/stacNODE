@@ -41,6 +41,7 @@ if init == "inside":
 else:
     true_initial_condition = torch.tensor([-15, -15, 5.]).reshape(1, dim)
     pdf_path = '../plot/dist_outside_all'+str(model)+'.jpg'
+    pdf_path_2 = '../plot/dist_outside_all_res.jpg'
 
 model='MLP_skip'
 MSE_MS_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
@@ -116,9 +117,9 @@ def plot_histograms(ax, data_true, data_learned, data_mse, title, first, idx):
     ax.yaxis.set_tick_params(labelsize=45)
     ax.legend(fontsize=45)
 
-fig, axes = plt.subplots(1, 5, figsize=(42, 7))  # 2 rows (time, ensemble) x 3 columns (x, y, z)
+fig, axes = plt.subplots(1, 3, figsize=(28, 7))  # 2 rows (time, ensemble) x 3 columns (x, y, z)
 dimensions = ['X', 'Y', 'Z']
-title = ['TRUE', 'MSE_MLP', 'MSE_Res', 'JAC_MLP', 'JAC_Res']
+title = ['TRUE', 'MSE_MLP', 'JAC_MLP']
 
 true_long = np.squeeze(true_long)
 learned_ms_long = np.squeeze(learned_ms_long)
@@ -126,10 +127,9 @@ mse_ms_long = np.squeeze(mse_ms_long)
 learned_mlp_long = np.squeeze(learned_mlp_long)
 mse_mlp_long = np.squeeze(mse_mlp_long)
 
-models = [true_long, mse_mlp_long, mse_ms_long, learned_mlp_long, learned_ms_long]
+models = [true_long, mse_mlp_long, learned_mlp_long]
 
-for j in range(5): 
-    # print("true", true_long.shape, learned_long.shape, mse_long.shape, axes.shape, dimensions)
+for j in range(3): 
     m = models[j]
     index = 0
     if j == 0:

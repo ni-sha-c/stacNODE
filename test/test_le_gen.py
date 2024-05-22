@@ -94,9 +94,7 @@ for i in range(num_trajectories):
     learned_LE.append(lyap_exps([dyn_sys, best_model, dim, time_step], s, torch.tensor(learned_short[i]), short_len_T).detach().cpu().numpy())
     mse_LE.append(lyap_exps([dyn_sys, mse_model, dim, time_step], s, torch.tensor(mse_short[i]), short_len_T).detach().cpu().numpy())
 
-# true_le = lyap_exps([dyn_sys, dyn_sys, dim, time_step], s, torch.tensor(_short[0]), short_len_T).detach().cpu().numpy()
-# print("true le:", true_le)
-# Define the file name for the CSV file
+
 JAC_file = "JAC_LE_50.csv"
 MSE_file = "MSE_LE_50.csv"
 TRUE_file = "TRUE_LE_50.csv"
@@ -113,6 +111,10 @@ with open(MSE_file, 'w', newline='') as csvfile:
 with open(TRUE_file, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile)
     csvwriter.writerows(true_LE)
+
+with open("RE_KS.csv", 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerows(RE_LE)
 
 # # Function to plot histograms for three models in one subplot
 # def plot_histograms(ax, data_true, data_learned, data_mse, title):

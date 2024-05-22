@@ -419,7 +419,7 @@ def lyap_exps_ks(dyn_sys, dyn_sys_info, true_traj, iters, u_list, dx, L, c, T, d
 
     # reorthonormalization
     epsilon = 1e-6
-    dim = 64
+    dim = org_dim
     N = 100
     print("d", dim)
 
@@ -631,14 +631,29 @@ if __name__ == '__main__':
     # Compute Jacobian Matrix and Lyapunov Exponent of rk4
     LE_rk4 = lyap_exps_ks(args.dyn_sys, dyn_sys_info, u_list, args.iters, u_list, dx, L, c, T, dt, time_step= args.time_step, optim_name=args.optim_name, method="rk4", path=model_path)
     print("rk4 LE: ", LE_rk4)
+    print("NODE LE: ", LE_NODE)
 
     # Compute || LE_{NODE} - LE_{rk4} ||
-    norm_difference = torch.linalg.norm(torch.tensor(LE_NODE) - torch.tensor(LE_rk4))
-    print("Norm Difference: ", norm_difference/torch.norm(torch.tensor(LE_rk4)))
+    norm_difference = torch.linalg.norm(torch.tensor(LE_NODE) - torch.tensor(LE_rk4))/torch.norm(torch.tensor(LE_rk4))*100
+    
+    # Find elements greater than 10
+    mask = norm_difference > 10.
+    # Count the number of elements greater than 10
+    count = mask.sum().item()
+
+    # Get the indices of elements greater than 10
+    indices = mask.nonzero(as_tuple=True)[0]
+
+    print(f'Number of elements greater than 10: {count}')
+    print(f'Indices of elements greater than 10: {indices.tolist()}')
 
     with open(path, 'a') as f:
         entry = {'Nerual ODE LE': LE_NODE.detach().cpu().tolist(), 'rk4 LE': LE_rk4.detach().cpu().tolist(), 'norm difference': norm_difference.detach().cpu().tolist()}
         json.dump(entry, f, indent=2)
+
+    with open("RE_KS.csv", 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerows(norm_difference)
 
     # NODE LE:  [ 0.14183909  0.10256176  0.0642665   0.02245339 -0.00764637 -0.03447348
     # -0.06807815 -0.10917487 -0.17748009 -0.35903192]        

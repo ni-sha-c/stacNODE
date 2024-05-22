@@ -344,7 +344,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     best_model.eval()
     RE_plot_path = f'{train_dir}minRE_{loss_type}.jpg'
     RE_True_plot_path = f'{train_dir}True_{loss_type}.jpg'
-    if dim == 1:
+    if dim in (1,2):
         plot_map(model, dyn_sys, dim, s, 1000, torch.randn(dim), RE_plot_path)
         # plot_map(dyn_sys, dim, s, 1000, torch.randn(dim), RE_True_plot_path)
     elif dim == 127:
@@ -376,18 +376,27 @@ def plot_loss(epochs, train, test, path):
 def plot_map(model, dyn_sys, dim, s, n_iter, init_state, pdf_path):
     fig, ax = subplots(figsize=(24,13))
     colors = cm.viridis(np.linspace(0, 1, 5))
-    x_orig = torch.linspace(0, 2, 10000).to('cuda')
-    # whole_traj = simulate_map(model, s, dim, n_iter, torch.randn(dim)).detach().cpu().numpy()
+    if dim == 1:
+        x_orig = torch.linspace(0, 2, 10000).to('cuda')
+    elif dim == 2:
+        x_orig = torch.linspace(0, 2*3.14159, 10000).to('cuda')
+        y_orig = torch.linspace(0, 2*3.14159, 10000).to('cuda')
     whole_true_traj = np.ones((10000))
     for j in range(10000):
-        whole_true_traj[j] = dyn_sys(x_orig[j], s)
-    # whole_true_traj = whole_true_traj.detach().cpu().numpy()
+        next_x = dyn_sys(torch.stack([x_orig[j], y_orig[j]]).to('cuda'), s)
+        print(j, next_x)
+        whole_true_traj[j] = next_x[0]
     
-    x = x_orig.reshape(-1, 1)
-    print("x", x.shape)
-    whole_traj = model(0, x)
+    if dim == 1:
+        x = x_orig.reshape(-1, dim)
+        print("x", x.shape)
+        whole_traj = model(0, x)
+    elif dim == 2:
+        x = torch.stack([x_orig, y_orig]).to('cuda').reshape(-1, dim)
+        print("x", x.shape)
+        whole_traj = model(0, x)[:, 0]
     whole_traj = whole_traj.detach().cpu().numpy()
-    # ax.scatter(whole_traj[0:-1], whole_traj[1:], color=colors[0], linewidth=6, alpha=0.8, label='s = ' + str(s))
+
     ax.scatter(x_orig.detach().cpu().numpy(), whole_true_traj, color=colors[3], linewidth=8, alpha=0.6, label=str("True: ") + 's = ' + str(s))
     ax.scatter(x_orig.detach().cpu().numpy(), whole_traj, color=colors[0], linewidth=6, alpha=0.6, label=str("Learned: ") + 's = ' + str(s))
     ax.set_xlabel(r"$x_n$", fontsize=44)
