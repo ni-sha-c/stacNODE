@@ -63,6 +63,10 @@ def plucked_tent_map(x, s):
     
     if 0 < x < 2:
         return torch.min(l(x, n=3), l(2-x, n=3))
+    elif x == 0.:
+        return x
+    elif x == 2.:
+        return x
 
 
 if __name__ == '__main__':

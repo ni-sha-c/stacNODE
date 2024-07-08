@@ -403,11 +403,11 @@ if __name__ == '__main__':
 
     # grid search
     modelchoices = ['MLP']#['MLP','MLP_skip']
-    hiddenchoices = [1024]#[256, 512, 1024]
+    hiddenchoices = [512]#[256, 512, 1024]
     layerchoices = [7]#[3, 5, 7]
     # batchchoices = [1000, 2000]#[1000, 2000]
     # weightdecay = [1e-4]#1[1e-3, 1e-4]
-    epochchoices = [8000]
+    epochchoices = [10000]
     regpchoices = [1000]
     combinations = list(itertools.product(modelchoices, epochchoices, hiddenchoices, layerchoices, regpchoices))
     # combinations = list(itertools.product(modelchoices, hiddenchoices, layerchoices, batchchoices, epoch))
@@ -415,17 +415,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=5e-4)
-    parser.add_argument("--num_epoch", type=int, default=8000)
+    parser.add_argument("--weight_decay", type=float, default=1e-3)
+    parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=8000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--batch_size", type=int, default=None, choices=[1000, 2000, None])
-    parser.add_argument("--loss_type", default="Jacobian", choices=["Jacobian", "MSE"])
+    parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
-    parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "CNN", "HigherDimCNN", "GRU"])
+    parser.add_argument("--model_type", default="MLP", choices=["MLP","MLP_skip"])
     parser.add_argument("--n_hidden", type=int, default=512)
-    parser.add_argument("--n_layers", type=int, default=4)
+    parser.add_argument("--n_layers", type=int, default=7)
     parser.add_argument("--reg_param", type=float, default=3000)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
     parser.add_argument("--train_dir", default="../plot/gs/train_MLPskip_MSE_new/", choices=["../plot/Vector_field/train_MLPskip_Jac/", "../plot/Vector_field/train_MLPskip_MSE/", "../plot/Vector_field/train_MLPskip_MSE_new/", "../plot/Vector_field/train_MLP_MSE_new/"])

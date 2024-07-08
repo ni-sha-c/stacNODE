@@ -1,0 +1,221 @@
+time_step: 1.0
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 10000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: MSE
+dyn_sys: pinched_tent_map
+model_type: MLP
+s: 0.8
+n_hidden: 256
+n_layers: 2
+reg_param: 500
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 0.732337952 Test: 0.425739586
+Epoch 0: New minimal relative error: 0.43%, model saved.
+Epoch: 100 Train: 0.031633221 Test: 0.031072628
+Epoch 100: New minimal relative error: 0.03%, model saved.
+Epoch: 200 Train: 0.016038012 Test: 0.014949784
+Epoch 200: New minimal relative error: 0.01%, model saved.
+Epoch: 300 Train: 0.004392805 Test: 0.003605725
+Epoch 300: New minimal relative error: 0.00%, model saved.
+Epoch: 400 Train: 0.001832564 Test: 0.001523144
+Epoch 400: New minimal relative error: 0.00%, model saved.
+Epoch: 500 Train: 0.001256126 Test: 0.001098241
+Epoch 500: New minimal relative error: 0.00%, model saved.
+Epoch: 600 Train: 0.000932835 Test: 0.000832603
+Epoch 600: New minimal relative error: 0.00%, model saved.
+Epoch: 700 Train: 0.000718666 Test: 0.000642387
+Epoch 700: New minimal relative error: 0.00%, model saved.
+Epoch: 800 Train: 0.000573593 Test: 0.000518331
+Epoch 800: New minimal relative error: 0.00%, model saved.
+Epoch: 900 Train: 0.000474943 Test: 0.000429383
+Epoch 900: New minimal relative error: 0.00%, model saved.
+Epoch: 1000 Train: 0.000407525 Test: 0.000378969
+Epoch 1000: New minimal relative error: 0.00%, model saved.
+Epoch: 1100 Train: 0.000360179 Test: 0.000330237
+Epoch 1100: New minimal relative error: 0.00%, model saved.
+Epoch: 1200 Train: 0.000324869 Test: 0.000298821
+Epoch 1200: New minimal relative error: 0.00%, model saved.
+Epoch: 1300 Train: 0.000298991 Test: 0.000277408
+Epoch 1300: New minimal relative error: 0.00%, model saved.
+Epoch: 1400 Train: 0.000277572 Test: 0.000258123
+Epoch 1400: New minimal relative error: 0.00%, model saved.
+Epoch: 1500 Train: 0.000260807 Test: 0.000243168
+Epoch 1500: New minimal relative error: 0.00%, model saved.
+Epoch: 1600 Train: 0.000246317 Test: 0.000229770
+Epoch 1600: New minimal relative error: 0.00%, model saved.
+Epoch: 1700 Train: 0.000235009 Test: 0.000223499
+Epoch 1700: New minimal relative error: 0.00%, model saved.
+Epoch: 1800 Train: 0.000223501 Test: 0.000208595
+Epoch 1800: New minimal relative error: 0.00%, model saved.
+Epoch: 1900 Train: 0.000213878 Test: 0.000199417
+Epoch 1900: New minimal relative error: 0.00%, model saved.
+Epoch: 2000 Train: 0.000208067 Test: 0.000195143
+Epoch 2000: New minimal relative error: 0.00%, model saved.
+Epoch: 2100 Train: 0.000197963 Test: 0.000184154
+Epoch 2100: New minimal relative error: 0.00%, model saved.
+Epoch: 2200 Train: 0.000190804 Test: 0.000177197
+Epoch 2200: New minimal relative error: 0.00%, model saved.
+Epoch: 2300 Train: 0.000185067 Test: 0.000172532
+Epoch 2300: New minimal relative error: 0.00%, model saved.
+Epoch: 2400 Train: 0.000178770 Test: 0.000165448
+Epoch 2400: New minimal relative error: 0.00%, model saved.
+Epoch: 2500 Train: 0.000173133 Test: 0.000159916
+Epoch 2500: New minimal relative error: 0.00%, model saved.
+Epoch: 2600 Train: 0.000168160 Test: 0.000154779
+Epoch 2600: New minimal relative error: 0.00%, model saved.
+Epoch: 2700 Train: 0.000163272 Test: 0.000150217
+Epoch 2700: New minimal relative error: 0.00%, model saved.
+Epoch: 2800 Train: 0.000195808 Test: 0.000156301
+Epoch: 2900 Train: 0.000154524 Test: 0.000141585
+Epoch 2900: New minimal relative error: 0.00%, model saved.
+Epoch: 3000 Train: 0.000150407 Test: 0.000137564
+Epoch 3000: New minimal relative error: 0.00%, model saved.
+Epoch: 3100 Train: 0.000146786 Test: 0.000133906
+Epoch 3100: New minimal relative error: 0.00%, model saved.
+Epoch: 3200 Train: 0.000143209 Test: 0.000130541
+Epoch 3200: New minimal relative error: 0.00%, model saved.
+Epoch: 3300 Train: 0.000139713 Test: 0.000127060
+Epoch 3300: New minimal relative error: 0.00%, model saved.
+Epoch: 3400 Train: 0.000136660 Test: 0.000124352
+Epoch 3400: New minimal relative error: 0.00%, model saved.
+Epoch: 3500 Train: 0.000133516 Test: 0.000121125
+Epoch 3500: New minimal relative error: 0.00%, model saved.
+Epoch: 3600 Train: 0.000196186 Test: 0.000177367
+Epoch: 3700 Train: 0.000127841 Test: 0.000115636
+Epoch 3700: New minimal relative error: 0.00%, model saved.
+Epoch: 3800 Train: 0.000125118 Test: 0.000113048
+Epoch 3800: New minimal relative error: 0.00%, model saved.
+Epoch: 3900 Train: 0.000123034 Test: 0.000110600
+Epoch 3900: New minimal relative error: 0.00%, model saved.
+Epoch: 4000 Train: 0.000120177 Test: 0.000108341
+Epoch 4000: New minimal relative error: 0.00%, model saved.
+Epoch: 4100 Train: 0.000117756 Test: 0.000106032
+Epoch 4100: New minimal relative error: 0.00%, model saved.
+Epoch: 4200 Train: 0.000115707 Test: 0.000104032
+Epoch 4200: New minimal relative error: 0.00%, model saved.
+Epoch: 4300 Train: 0.000113541 Test: 0.000102079
+Epoch 4300: New minimal relative error: 0.00%, model saved.
+Epoch: 4400 Train: 0.000111443 Test: 0.000100109
+Epoch 4400: New minimal relative error: 0.00%, model saved.
+Epoch: 4500 Train: 0.000111962 Test: 0.000099959
+Epoch 4500: New minimal relative error: 0.00%, model saved.
+Epoch: 4600 Train: 0.000107614 Test: 0.000096543
+Epoch 4600: New minimal relative error: 0.00%, model saved.
+Epoch: 4700 Train: 0.000105744 Test: 0.000094797
+Epoch 4700: New minimal relative error: 0.00%, model saved.
+Epoch: 4800 Train: 0.000104165 Test: 0.000093271
+Epoch 4800: New minimal relative error: 0.00%, model saved.
+Epoch: 4900 Train: 0.000102412 Test: 0.000091737
+Epoch 4900: New minimal relative error: 0.00%, model saved.
+Epoch: 5000 Train: 0.000100765 Test: 0.000090245
+Epoch 5000: New minimal relative error: 0.00%, model saved.
+Epoch: 5100 Train: 0.000099351 Test: 0.000089074
+Epoch 5100: New minimal relative error: 0.00%, model saved.
+Epoch: 5200 Train: 0.000097809 Test: 0.000087531
+Epoch 5200: New minimal relative error: 0.00%, model saved.
+Epoch: 5300 Train: 0.000096943 Test: 0.000087476
+Epoch 5300: New minimal relative error: 0.00%, model saved.
+Epoch: 5400 Train: 0.000095058 Test: 0.000085085
+Epoch 5400: New minimal relative error: 0.00%, model saved.
+Epoch: 5500 Train: 0.000093724 Test: 0.000083837
+Epoch 5500: New minimal relative error: 0.00%, model saved.
+Epoch: 5600 Train: 0.000211072 Test: 0.000204727
+Epoch: 5700 Train: 0.000091270 Test: 0.000081654
+Epoch 5700: New minimal relative error: 0.00%, model saved.
+Epoch: 5800 Train: 0.000090089 Test: 0.000080580
+Epoch 5800: New minimal relative error: 0.00%, model saved.
+Epoch: 5900 Train: 0.000100557 Test: 0.000080130
+Epoch 5900: New minimal relative error: 0.00%, model saved.
+Epoch: 6000 Train: 0.000087899 Test: 0.000078641
+Epoch 6000: New minimal relative error: 0.00%, model saved.
+Epoch: 6100 Train: 0.000086842 Test: 0.000077701
+Epoch 6100: New minimal relative error: 0.00%, model saved.
+Epoch: 6200 Train: 0.000142582 Test: 0.000096973
+Epoch: 6300 Train: 0.000084875 Test: 0.000075984
+Epoch 6300: New minimal relative error: 0.00%, model saved.
+Epoch: 6400 Train: 0.000083930 Test: 0.000075142
+Epoch 6400: New minimal relative error: 0.00%, model saved.
+Epoch: 6500 Train: 0.000082987 Test: 0.000074319
+Epoch 6500: New minimal relative error: 0.00%, model saved.
+Epoch: 6600 Train: 0.000082147 Test: 0.000073748
+Epoch 6600: New minimal relative error: 0.00%, model saved.
+Epoch: 6700 Train: 0.000081281 Test: 0.000072835
+Epoch 6700: New minimal relative error: 0.00%, model saved.
+Epoch: 6800 Train: 0.000080435 Test: 0.000072099
+Epoch 6800: New minimal relative error: 0.00%, model saved.
+Epoch: 6900 Train: 0.000082984 Test: 0.000073419
+Epoch: 7000 Train: 0.000078843 Test: 0.000070720
+Epoch 7000: New minimal relative error: 0.00%, model saved.
+Epoch: 7100 Train: 0.000078073 Test: 0.000070063
+Epoch 7100: New minimal relative error: 0.00%, model saved.
+Epoch: 7200 Train: 0.000077309 Test: 0.000069390
+Epoch 7200: New minimal relative error: 0.00%, model saved.
+Epoch: 7300 Train: 0.000076591 Test: 0.000068799
+Epoch 7300: New minimal relative error: 0.00%, model saved.
+Epoch: 7400 Train: 0.000075876 Test: 0.000068184
+Epoch 7400: New minimal relative error: 0.00%, model saved.
+Epoch: 7500 Train: 0.000075808 Test: 0.000068401
+Epoch: 7600 Train: 0.000074500 Test: 0.000067015
+Epoch 7600: New minimal relative error: 0.00%, model saved.
+Epoch: 7700 Train: 0.000073828 Test: 0.000066442
+Epoch 7700: New minimal relative error: 0.00%, model saved.
+Epoch: 7800 Train: 0.000073541 Test: 0.000065954
+Epoch 7800: New minimal relative error: 0.00%, model saved.
+Epoch: 7900 Train: 0.000072548 Test: 0.000065357
+Epoch 7900: New minimal relative error: 0.00%, model saved.
+Epoch: 8000 Train: 0.000071917 Test: 0.000064825
+Epoch 8000: New minimal relative error: 0.00%, model saved.
+Epoch: 8100 Train: 0.000071389 Test: 0.000064363
+Epoch 8100: New minimal relative error: 0.00%, model saved.
+Epoch: 8200 Train: 0.000070726 Test: 0.000063825
+Epoch 8200: New minimal relative error: 0.00%, model saved.
+Epoch: 8300 Train: 0.000070287 Test: 0.000063638
+Epoch 8300: New minimal relative error: 0.00%, model saved.
+Epoch: 8400 Train: 0.000069575 Test: 0.000062857
+Epoch 8400: New minimal relative error: 0.00%, model saved.
+Epoch: 8500 Train: 0.000069015 Test: 0.000062392
+Epoch 8500: New minimal relative error: 0.00%, model saved.
+Epoch: 8600 Train: 0.000068650 Test: 0.000062357
+Epoch 8600: New minimal relative error: 0.00%, model saved.
+Epoch: 8700 Train: 0.000067933 Test: 0.000061491
+Epoch 8700: New minimal relative error: 0.00%, model saved.
+Epoch: 8800 Train: 0.000067442 Test: 0.000061083
+Epoch 8800: New minimal relative error: 0.00%, model saved.
+Epoch: 8900 Train: 0.000066909 Test: 0.000060654
+Epoch 8900: New minimal relative error: 0.00%, model saved.
+Epoch: 9000 Train: 0.000066407 Test: 0.000060225
+Epoch 9000: New minimal relative error: 0.00%, model saved.
+Epoch: 9100 Train: 0.000065907 Test: 0.000059809
+Epoch 9100: New minimal relative error: 0.00%, model saved.
+Epoch: 9200 Train: 0.000065462 Test: 0.000059411
+Epoch 9200: New minimal relative error: 0.00%, model saved.
+Epoch: 9300 Train: 0.000064946 Test: 0.000059017
+Epoch 9300: New minimal relative error: 0.00%, model saved.
+Epoch: 9400 Train: 0.000075774 Test: 0.000072184
+Epoch: 9500 Train: 0.000064031 Test: 0.000058262
+Epoch 9500: New minimal relative error: 0.00%, model saved.
+Epoch: 9600 Train: 0.000063584 Test: 0.000057894
+Epoch 9600: New minimal relative error: 0.00%, model saved.
+Epoch: 9700 Train: 0.000063343 Test: 0.000057892
+Epoch 9700: New minimal relative error: 0.00%, model saved.
+Epoch: 9800 Train: 0.000062705 Test: 0.000057174
+Epoch 9800: New minimal relative error: 0.00%, model saved.
+Epoch: 9900 Train: 0.000062273 Test: 0.000056816
+Epoch 9900: New minimal relative error: 0.00%, model saved.
+Epoch: 9999 Train: 0.000061861 Test: 0.000056487
+Epoch 9999: New minimal relative error: 0.00%, model saved.
+Training Loss: tensor(6.1861e-05)
+Test Loss: tensor(5.6487e-05)
+True Mean x: tensor(0.8028, device='cuda:0', grad_fn=<MeanBackward0>)
+Learned Mean x: tensor(0.7857, device='cuda:0', grad_fn=<MeanBackward0>)
+True Var x: tensor(0.2446, device='cuda:0', grad_fn=<VarBackward0>)
+Learned Var x: tensor(0.2403, device='cuda:0', grad_fn=<VarBackward0>)
+Learned LE: [[0.5771407]]
+True LE: [[0.6214979]]
+Norm Diff:: tensor(0.0444)

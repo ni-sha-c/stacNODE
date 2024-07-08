@@ -32,9 +32,10 @@ s = 0.2
 hidden = 256
 model = 'MLP_skip'
 num_trajectories = 5000
-long_len_T = 100*int(1/time_step)
-short_len_T = 50*int(1/time_step)
+# long_len_T = 100*int(1/time_step)
+short_len_T = 200*int(1/time_step)
 
+torch.manual_seed(42)
 
 if model == "MLP_skip":
     MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model_MLPskip_MSE.pth"
@@ -95,9 +96,9 @@ for i in range(num_trajectories):
     mse_LE.append(lyap_exps([dyn_sys, mse_model, dim, time_step], s, torch.tensor(mse_short[i]), short_len_T).detach().cpu().numpy())
 
 
-JAC_file = "JAC_LE_50.csv"
-MSE_file = "MSE_LE_50.csv"
-TRUE_file = "TRUE_LE_50.csv"
+JAC_file = "JAC_LE_200_2.csv"
+MSE_file = "MSE_LE_200_2.csv"
+TRUE_file = "TRUE_LE_200_2.csv"
 
 # Open the CSV file in write mode
 with open(JAC_file, 'w', newline='') as csvfile:
@@ -112,9 +113,9 @@ with open(TRUE_file, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile)
     csvwriter.writerows(true_LE)
 
-with open("RE_KS.csv", 'w', newline='') as csvfile:
-    csvwriter = csv.writer(csvfile)
-    csvwriter.writerows(RE_LE)
+# with open("RE_KS.csv", 'w', newline='') as csvfile:
+#     csvwriter = csv.writer(csvfile)
+#     csvwriter.writerows(RE_LE)
 
 # # Function to plot histograms for three models in one subplot
 # def plot_histograms(ax, data_true, data_learned, data_mse, title):
