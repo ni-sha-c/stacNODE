@@ -1,0 +1,141 @@
+time_step: 1.0
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 5000
+num_train: 2000
+num_test: 1000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: baker
+model_type: MLP_skip
+s: 0.0
+n_hidden: 512
+n_layers: 3
+reg_param: 800.0
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 22.749198914 Test: 14.692525864
+Epoch 0: New minimal relative error: 14.69%, model saved.
+Epoch: 50 Train: 3.640201092 Test: 4.097926140
+Epoch 50: New minimal relative error: 4.10%, model saved.
+Epoch: 100 Train: 3.573159695 Test: 4.007471085
+Epoch 100: New minimal relative error: 4.01%, model saved.
+Epoch: 150 Train: 3.576267719 Test: 4.004118919
+Epoch 150: New minimal relative error: 4.00%, model saved.
+Epoch: 200 Train: 3.572710991 Test: 4.000609398
+Epoch 200: New minimal relative error: 4.00%, model saved.
+Epoch: 250 Train: 3.527945518 Test: 3.946833849
+Epoch 250: New minimal relative error: 3.95%, model saved.
+Epoch: 300 Train: 3.553108215 Test: 3.960271358
+Epoch: 350 Train: 3.546654940 Test: 4.012458324
+Epoch: 400 Train: 3.548512936 Test: 3.970501423
+Epoch: 450 Train: 3.555529118 Test: 3.986902475
+Epoch: 500 Train: 3.527188301 Test: 3.968614101
+Epoch: 550 Train: 3.531555653 Test: 3.960652590
+Epoch: 600 Train: 3.523033142 Test: 3.952070236
+Epoch: 650 Train: 3.531755447 Test: 3.945701599
+Epoch 650: New minimal relative error: 3.95%, model saved.
+Epoch: 700 Train: 3.530093193 Test: 3.937524796
+Epoch 700: New minimal relative error: 3.94%, model saved.
+Epoch: 750 Train: 3.515630245 Test: 3.932128429
+Epoch 750: New minimal relative error: 3.93%, model saved.
+Epoch: 800 Train: 3.523228645 Test: 3.953370571
+Epoch: 850 Train: 3.515587330 Test: 3.951664448
+Epoch: 900 Train: 3.509390831 Test: 3.912982941
+Epoch 900: New minimal relative error: 3.91%, model saved.
+Epoch: 950 Train: 3.516005516 Test: 3.940104008
+Epoch: 1000 Train: 3.520116806 Test: 3.918107748
+Epoch: 1050 Train: 3.516401768 Test: 3.952260017
+Epoch: 1100 Train: 3.510544777 Test: 3.917891741
+Epoch: 1150 Train: 3.521863222 Test: 3.940997839
+Epoch: 1200 Train: 3.495942593 Test: 3.915967941
+Epoch: 1250 Train: 3.500986099 Test: 3.934647799
+Epoch: 1300 Train: 3.508620739 Test: 3.932093620
+Epoch: 1350 Train: 3.504572868 Test: 3.905087233
+Epoch 1350: New minimal relative error: 3.91%, model saved.
+Epoch: 1400 Train: 3.507099390 Test: 3.904149532
+Epoch 1400: New minimal relative error: 3.90%, model saved.
+Epoch: 1450 Train: 3.512476444 Test: 3.918625832
+Epoch: 1500 Train: 3.497614384 Test: 3.900844336
+Epoch 1500: New minimal relative error: 3.90%, model saved.
+Epoch: 1550 Train: 3.522411346 Test: 3.932173729
+Epoch: 1600 Train: 3.526657820 Test: 3.944271564
+Epoch: 1650 Train: 3.516667128 Test: 3.934665680
+Epoch: 1700 Train: 3.541260242 Test: 3.952268362
+Epoch: 1750 Train: 3.525420189 Test: 3.944216728
+Epoch: 1800 Train: 3.541343212 Test: 3.966394186
+Epoch: 1850 Train: 3.550451279 Test: 3.962200165
+Epoch: 1900 Train: 3.531270504 Test: 3.954212189
+Epoch: 1950 Train: 3.531596422 Test: 3.939398766
+Epoch: 2000 Train: 3.537206650 Test: 3.968022346
+Epoch: 2050 Train: 3.539815426 Test: 3.968174458
+Epoch: 2100 Train: 3.549176693 Test: 3.977509022
+Epoch: 2150 Train: 3.560629606 Test: 3.962300539
+Epoch: 2200 Train: 3.553025723 Test: 3.972783566
+Epoch: 2250 Train: 3.561277151 Test: 3.992276907
+Epoch: 2300 Train: 3.577939510 Test: 3.993195057
+Epoch: 2350 Train: 3.565818310 Test: 3.976585388
+Epoch: 2400 Train: 3.579089165 Test: 3.988719702
+Epoch: 2450 Train: 3.578698397 Test: 3.986218691
+Epoch: 2500 Train: 3.581736565 Test: 3.989589691
+Epoch: 2550 Train: 3.584483624 Test: 3.999450684
+Epoch: 2600 Train: 3.576490879 Test: 3.987111330
+Epoch: 2650 Train: 3.567555428 Test: 3.984471798
+Epoch: 2700 Train: 3.575724363 Test: 3.990181446
+Epoch: 2750 Train: 3.575250149 Test: 3.985560179
+Epoch: 2800 Train: 3.569820166 Test: 3.980120420
+Epoch: 2850 Train: 3.578437805 Test: 3.990685701
+Epoch: 2900 Train: 3.578106165 Test: 3.994804382
+Epoch: 2950 Train: 3.582768440 Test: 3.998906374
+Epoch: 3000 Train: 3.572020054 Test: 3.980210543
+Epoch: 3050 Train: 3.575108051 Test: 3.974636555
+Epoch: 3100 Train: 3.574026108 Test: 3.982772350
+Epoch: 3150 Train: 3.574353695 Test: 3.977422237
+Epoch: 3200 Train: 3.574047565 Test: 3.983680487
+Epoch: 3250 Train: 3.575432301 Test: 3.981706619
+Epoch: 3300 Train: 3.578302383 Test: 3.985326290
+Epoch: 3350 Train: 3.580875397 Test: 3.989159584
+Epoch: 3400 Train: 3.579066753 Test: 3.989340305
+Epoch: 3450 Train: 3.578331232 Test: 3.987609386
+Epoch: 3500 Train: 3.581419230 Test: 3.999073267
+Epoch: 3550 Train: 3.567395210 Test: 3.967402458
+Epoch: 3600 Train: 3.576959133 Test: 3.983935833
+Epoch: 3650 Train: 3.578299522 Test: 3.982148647
+Epoch: 3700 Train: 3.584335327 Test: 3.991616011
+Epoch: 3750 Train: 3.580858946 Test: 3.996114254
+Epoch: 3800 Train: 3.575932026 Test: 3.988197327
+Epoch: 3850 Train: 3.573838234 Test: 3.983518600
+Epoch: 3900 Train: 3.573977947 Test: 3.993189096
+Epoch: 3950 Train: 3.574939251 Test: 3.990635872
+Epoch: 4000 Train: 3.570823431 Test: 3.993575811
+Epoch: 4050 Train: 3.573870182 Test: 3.992556095
+Epoch: 4100 Train: 3.569253922 Test: 3.984477043
+Epoch: 4150 Train: 3.568914413 Test: 3.980831385
+Epoch: 4200 Train: 3.571672440 Test: 3.988172531
+Epoch: 4250 Train: 3.572108746 Test: 3.990645170
+Epoch: 4300 Train: 3.573468208 Test: 3.985973358
+Epoch: 4350 Train: 3.569537163 Test: 3.977262497
+Epoch: 4400 Train: 3.570591688 Test: 3.977728844
+Epoch: 4450 Train: 3.563886642 Test: 3.976986408
+Epoch: 4500 Train: 3.562795877 Test: 3.964036465
+Epoch: 4550 Train: 3.568069696 Test: 3.976236820
+Epoch: 4600 Train: 3.559911251 Test: 3.963747025
+Epoch: 4650 Train: 3.549126625 Test: 3.963662148
+Epoch: 4700 Train: 3.549119234 Test: 3.963483810
+Epoch: 4750 Train: 3.551851511 Test: 3.962603092
+Epoch: 4800 Train: 3.561123848 Test: 3.975227833
+Epoch: 4850 Train: 3.555708170 Test: 3.965178013
+Epoch: 4900 Train: 3.552281380 Test: 3.956672430
+Epoch: 4950 Train: 3.552647114 Test: 3.961606979
+Epoch: 4999 Train: 3.561366558 Test: 3.971129417
+Training Loss: tensor(3.5614)
+Test Loss: tensor(3.9711)
+True Mean x: tensor(2.8976, device='cuda:0', grad_fn=<MeanBackward0>)
+Learned Mean x: tensor(nan, device='cuda:0', grad_fn=<MeanBackward0>)
+True Var x: tensor(3.4858, device='cuda:0', grad_fn=<VarBackward0>)
+Learned Var x: tensor(nan, device='cuda:0', grad_fn=<VarBackward0>)
+Jacobian term Training Loss: tensor(0.0014)
+Jacobian term Test Loss: tensor(0.0019)
+Learned LE: [1.5059869  0.58221596]
+True LE: tensor([ 0.6931, -0.6931], dtype=torch.float64)

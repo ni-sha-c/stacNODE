@@ -1,0 +1,118 @@
+time_step: 1.0
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 1000
+num_train: 1000
+num_test: 0
+num_val: 0
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: baker
+model_type: MLP_skip
+s: 0.0
+n_hidden: 512
+n_layers: 2
+reg_param: 500
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 16.399087906 Test: nan
+Epoch: 10 Train: 4.446464062 Test: nan
+Epoch: 20 Train: 3.585307837 Test: nan
+Epoch: 30 Train: 3.502523422 Test: nan
+Epoch: 40 Train: 3.471036434 Test: nan
+Epoch: 50 Train: 3.422173023 Test: nan
+Epoch: 60 Train: 3.403555870 Test: nan
+Epoch: 70 Train: 3.403478146 Test: nan
+Epoch: 80 Train: 3.395619631 Test: nan
+Epoch: 90 Train: 3.393837690 Test: nan
+Epoch: 100 Train: 3.394462824 Test: nan
+Epoch: 110 Train: 3.391290188 Test: nan
+Epoch: 120 Train: 3.382290840 Test: nan
+Epoch: 130 Train: 3.378740311 Test: nan
+Epoch: 140 Train: 3.375420570 Test: nan
+Epoch: 150 Train: 3.376127481 Test: nan
+Epoch: 160 Train: 3.370224953 Test: nan
+Epoch: 170 Train: 3.376072884 Test: nan
+Epoch: 180 Train: 3.374528408 Test: nan
+Epoch: 190 Train: 3.374455452 Test: nan
+Epoch: 200 Train: 3.366133213 Test: nan
+Epoch: 210 Train: 3.370249987 Test: nan
+Epoch: 220 Train: 3.383891344 Test: nan
+Epoch: 230 Train: 3.369276762 Test: nan
+Epoch: 240 Train: 3.362977505 Test: nan
+Epoch: 250 Train: 3.356384754 Test: nan
+Epoch: 260 Train: 3.357608080 Test: nan
+Epoch: 270 Train: 3.361614704 Test: nan
+Epoch: 280 Train: 3.362219810 Test: nan
+Epoch: 290 Train: 3.363485336 Test: nan
+Epoch: 300 Train: 3.366972446 Test: nan
+Epoch: 310 Train: 3.368854284 Test: nan
+Epoch: 320 Train: 3.369579792 Test: nan
+Epoch: 330 Train: 3.374932766 Test: nan
+Epoch: 340 Train: 3.371590137 Test: nan
+Epoch: 350 Train: 3.364913940 Test: nan
+Epoch: 360 Train: 3.359930515 Test: nan
+Epoch: 370 Train: 3.357567549 Test: nan
+Epoch: 380 Train: 3.356195927 Test: nan
+Epoch: 390 Train: 3.357469797 Test: nan
+Epoch: 400 Train: 3.364281654 Test: nan
+Epoch: 410 Train: 3.360549450 Test: nan
+Epoch: 420 Train: 3.362190485 Test: nan
+Epoch: 430 Train: 3.359540462 Test: nan
+Epoch: 440 Train: 3.361095905 Test: nan
+Epoch: 450 Train: 3.359065294 Test: nan
+Epoch: 460 Train: 3.355031013 Test: nan
+Epoch: 470 Train: 3.353384018 Test: nan
+Epoch: 480 Train: 3.354096174 Test: nan
+Epoch: 490 Train: 3.350715399 Test: nan
+Epoch: 500 Train: 3.350045681 Test: nan
+Epoch: 510 Train: 3.347713947 Test: nan
+Epoch: 520 Train: 3.344954491 Test: nan
+Epoch: 530 Train: 3.342191219 Test: nan
+Epoch: 540 Train: 3.338510513 Test: nan
+Epoch: 550 Train: 3.336356640 Test: nan
+Epoch: 560 Train: 3.335912943 Test: nan
+Epoch: 570 Train: 3.333393335 Test: nan
+Epoch: 580 Train: 3.330634117 Test: nan
+Epoch: 590 Train: 3.328794241 Test: nan
+Epoch: 600 Train: 3.329228163 Test: nan
+Epoch: 610 Train: 3.325605154 Test: nan
+Epoch: 620 Train: 3.324249744 Test: nan
+Epoch: 630 Train: 3.326346397 Test: nan
+Epoch: 640 Train: 3.333860397 Test: nan
+Epoch: 650 Train: 3.324065208 Test: nan
+Epoch: 660 Train: 3.328389645 Test: nan
+Epoch: 670 Train: 3.326679230 Test: nan
+Epoch: 680 Train: 3.322899103 Test: nan
+Epoch: 690 Train: 3.321804047 Test: nan
+Epoch: 700 Train: 3.319182873 Test: nan
+Epoch: 710 Train: 3.316189289 Test: nan
+Epoch: 720 Train: 3.314327002 Test: nan
+Epoch: 730 Train: 3.312280178 Test: nan
+Epoch: 740 Train: 3.308339357 Test: nan
+Epoch: 750 Train: 3.309656143 Test: nan
+Epoch: 760 Train: 3.311789036 Test: nan
+Epoch: 770 Train: 3.311398506 Test: nan
+Epoch: 780 Train: 3.311021566 Test: nan
+Epoch: 790 Train: 3.312044382 Test: nan
+Epoch: 800 Train: 3.312347889 Test: nan
+Epoch: 810 Train: 3.311731339 Test: nan
+Epoch: 820 Train: 3.312487841 Test: nan
+Epoch: 830 Train: 3.311783791 Test: nan
+Epoch: 840 Train: 3.311365366 Test: nan
+Epoch: 850 Train: 3.311113358 Test: nan
+Epoch: 860 Train: 3.310515642 Test: nan
+Epoch: 870 Train: 3.311547279 Test: nan
+Epoch: 880 Train: 3.312434673 Test: nan
+Epoch: 890 Train: 3.310699463 Test: nan
+Epoch: 900 Train: 3.309691429 Test: nan
+Epoch: 910 Train: 3.308096886 Test: nan
+Epoch: 920 Train: 3.307683468 Test: nan
+Epoch: 930 Train: 3.306926727 Test: nan
+Epoch: 940 Train: 3.306799650 Test: nan
+Epoch: 950 Train: 3.307371616 Test: nan
+Epoch: 960 Train: 3.306914330 Test: nan
+Epoch: 970 Train: 3.311443567 Test: nan
+Epoch: 980 Train: 3.305048466 Test: nan
+Epoch: 990 Train: 3.305689573 Test: nan
+Epoch: 999 Train: 3.307020187 Test: nan

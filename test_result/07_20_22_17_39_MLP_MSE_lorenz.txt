@@ -1,0 +1,37 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 10000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: MSE
+dyn_sys: lorenz
+model_type: MLP
+s: 0.2
+n_hidden: 512
+n_layers: 3
+reg_param: 500
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 1.387694597 Test: 0.398526430
+Epoch 0: New minimal relative error: 99.64%, model saved.
+Epoch: 100 Train: 0.019326603 Test: 0.005758657
+Epoch 100: New minimal relative error: 46.96%, model saved.
+Epoch: 200 Train: 0.003820766 Test: 0.001149039
+Epoch 200: New minimal relative error: 36.27%, model saved.
+Epoch: 300 Train: 0.002316912 Test: 0.000862397
+Epoch 300: New minimal relative error: 7.21%, model saved.
+Epoch: 400 Train: 0.001435429 Test: 0.000532526
+Epoch: 500 Train: 0.003379818 Test: 0.001239301
+Epoch: 600 Train: 0.000850809 Test: 0.000358866
+Epoch: 700 Train: 0.000657283 Test: 0.000307361
+Epoch: 800 Train: 0.002989203 Test: 0.000753033
+Epoch: 900 Train: 0.000835474 Test: 0.000324012
+Epoch: 1000 Train: 0.000740399 Test: 0.000281286
+Epoch: 1100 Train: 0.000438056 Test: 0.000234706
+Epoch: 1200 Train: 0.000273794 Test: 0.000180045
+Epoch 1200: New minimal relative error: 1.40%, model saved.
+Epoch: 1300 Train: 0.001127493 Test: 0.000475122
+Epoch: 1400 Train: 0.000291321 Test: 0.000182369

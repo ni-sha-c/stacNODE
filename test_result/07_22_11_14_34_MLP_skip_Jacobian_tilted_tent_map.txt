@@ -1,0 +1,134 @@
+time_step: 1.0
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 8000
+num_train: 3000
+num_test: 3000
+num_val: 0
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: tilted_tent_map
+model_type: MLP_skip
+s: 0.8
+n_hidden: 512
+n_layers: 2
+reg_param: 200.0
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 14.120505333 Test: 12.624408722
+Epoch 0: New minimal relative error: 12.62%, model saved.
+Epoch: 80 Train: 1.707715392 Test: 1.537610292
+Epoch 80: New minimal relative error: 1.54%, model saved.
+Epoch: 160 Train: 0.018437648 Test: 0.005606256
+Epoch 160: New minimal relative error: 0.01%, model saved.
+Epoch: 240 Train: 0.011904055 Test: 0.001756568
+Epoch 240: New minimal relative error: 0.00%, model saved.
+Epoch: 320 Train: 0.016647987 Test: 0.002399111
+Epoch: 400 Train: 0.032614715 Test: 0.002160145
+Epoch: 480 Train: 0.119110160 Test: 0.039073903
+Epoch: 560 Train: 0.051214289 Test: 0.077917576
+Epoch: 640 Train: 0.061080761 Test: 0.022565579
+Epoch: 720 Train: 0.045434278 Test: 0.011682170
+Epoch: 800 Train: 0.223456070 Test: 0.095575429
+Epoch: 880 Train: 0.137149245 Test: 0.105285637
+Epoch: 960 Train: 0.190879107 Test: 0.094017260
+Epoch: 1040 Train: 0.195772126 Test: 0.105143562
+Epoch: 1120 Train: 0.284584135 Test: 0.051235508
+Epoch: 1200 Train: 0.112881988 Test: 0.141711518
+Epoch: 1280 Train: 0.026126454 Test: 0.010007019
+Epoch: 1360 Train: 0.201257125 Test: 0.096657410
+Epoch: 1440 Train: 0.067127600 Test: 0.214434966
+Epoch: 1520 Train: 0.064240836 Test: 0.193506286
+Epoch: 1600 Train: 0.091856897 Test: 0.036433704
+Epoch: 1680 Train: 0.087785445 Test: 0.058460891
+Epoch: 1760 Train: 0.158746898 Test: 0.138246030
+Epoch: 1840 Train: 0.080140054 Test: 0.027557611
+Epoch: 1920 Train: 0.283613145 Test: 0.055308633
+Epoch: 2000 Train: 0.136731237 Test: 0.098799117
+Epoch: 2080 Train: 0.265876889 Test: 0.016781636
+Epoch: 2160 Train: 0.202576876 Test: 0.017404266
+Epoch: 2240 Train: 0.063065447 Test: 0.069524683
+Epoch: 2320 Train: 0.076660044 Test: 0.136714205
+Epoch: 2400 Train: 0.031879518 Test: 0.014570695
+Epoch: 2480 Train: 0.075253792 Test: 0.067990102
+Epoch: 2560 Train: 0.031850129 Test: 0.018781209
+Epoch: 2640 Train: 0.139274940 Test: 0.061111342
+Epoch: 2720 Train: 0.207718194 Test: 0.201093853
+Epoch: 2800 Train: 0.127076507 Test: 0.029203331
+Epoch: 2880 Train: 0.100399263 Test: 0.058624037
+Epoch: 2960 Train: 0.034893367 Test: 0.007135237
+Epoch: 3040 Train: 0.117237031 Test: 0.120584749
+Epoch: 3120 Train: 0.039686266 Test: 0.003948782
+Epoch: 3200 Train: 0.049881831 Test: 0.005851800
+Epoch: 3280 Train: 0.029785872 Test: 0.008874296
+Epoch: 3360 Train: 0.256905019 Test: 0.061932482
+Epoch: 3440 Train: 0.193933919 Test: 0.168940544
+Epoch: 3520 Train: 0.116243020 Test: 0.104003437
+Epoch: 3600 Train: 0.229661211 Test: 0.023129182
+Epoch: 3680 Train: 0.064213663 Test: 0.043440331
+Epoch: 3760 Train: 0.185721457 Test: 0.141205207
+Epoch: 3840 Train: 0.058450781 Test: 0.013205661
+Epoch: 3920 Train: 0.057971198 Test: 0.036335807
+Epoch: 4000 Train: 0.067384750 Test: 0.032461818
+Epoch: 4080 Train: 0.060750585 Test: 0.006136537
+Epoch: 4160 Train: 0.043755166 Test: 0.011293085
+Epoch: 4240 Train: 0.041598398 Test: 0.008800340
+Epoch: 4320 Train: 0.251801491 Test: 0.163404271
+Epoch: 4400 Train: 0.047202494 Test: 0.028126583
+Epoch: 4480 Train: 0.029103592 Test: 0.012628815
+Epoch: 4560 Train: 0.171491638 Test: 0.137054324
+Epoch: 4640 Train: 0.036529150 Test: 0.004951750
+Epoch: 4720 Train: 0.126626939 Test: 0.045878690
+Epoch: 4800 Train: 0.103597276 Test: 0.027947607
+Epoch: 4880 Train: 0.027163185 Test: 0.012521587
+Epoch: 4960 Train: 0.145765886 Test: 0.155153200
+Epoch: 5040 Train: 0.205341592 Test: 0.167719170
+Epoch: 5120 Train: 0.210501119 Test: 0.190757647
+Epoch: 5200 Train: 0.212229162 Test: 0.105535768
+Epoch: 5280 Train: 0.228937358 Test: 0.056521770
+Epoch: 5360 Train: 0.102842316 Test: 0.065952137
+Epoch: 5440 Train: 0.067705862 Test: 0.014999452
+Epoch: 5520 Train: 0.048197586 Test: 0.015441739
+Epoch: 5600 Train: 0.106546737 Test: 0.043974336
+Epoch: 5680 Train: 0.114588112 Test: 0.059916850
+Epoch: 5760 Train: 0.176259309 Test: 0.039168239
+Epoch: 5840 Train: 0.199683353 Test: 0.094277784
+Epoch: 5920 Train: 0.218738824 Test: 0.081409894
+Epoch: 6000 Train: 0.261299014 Test: 0.112425037
+Epoch: 6080 Train: 0.240235388 Test: 0.116094530
+Epoch: 6160 Train: 0.180410877 Test: 0.069050342
+Epoch: 6240 Train: 0.179473713 Test: 0.059946518
+Epoch: 6320 Train: 0.066902980 Test: 0.020831369
+Epoch: 6400 Train: 0.053468611 Test: 0.010258852
+Epoch: 6480 Train: 0.171742216 Test: 0.138949439
+Epoch: 6560 Train: 0.166388601 Test: 0.081532873
+Epoch: 6640 Train: 0.156624898 Test: 0.134788573
+Epoch: 6720 Train: 0.219529569 Test: 0.054144971
+Epoch: 6800 Train: 0.200427398 Test: 0.090513848
+Epoch: 6880 Train: 0.027925646 Test: 0.005636333
+Epoch: 6960 Train: 0.044737328 Test: 0.024403932
+Epoch: 7040 Train: 0.110759050 Test: 0.039253227
+Epoch: 7120 Train: 0.016417835 Test: 0.002853033
+Epoch: 7200 Train: 0.259186745 Test: 0.189408705
+Epoch: 7280 Train: 0.140660167 Test: 0.050832883
+Epoch: 7360 Train: 0.178726122 Test: 0.042652126
+Epoch: 7440 Train: 0.015184116 Test: 0.009182232
+Epoch: 7520 Train: 0.183721736 Test: 0.112850316
+Epoch: 7600 Train: 0.077530771 Test: 0.022163540
+Epoch: 7680 Train: 0.005770103 Test: 0.004018711
+Epoch: 7760 Train: 0.021496788 Test: 0.001115729
+Epoch 7760: New minimal relative error: 0.00%, model saved.
+Epoch: 7840 Train: 0.003778363 Test: 0.005079083
+Epoch: 7920 Train: 0.010119979 Test: 0.001781818
+Epoch: 7999 Train: 0.113302626 Test: 0.051176697
+Training Loss: tensor(0.1133)
+Test Loss: tensor(0.0512)
+True Mean x: tensor(1.1530, device='cuda:0', grad_fn=<MeanBackward0>)
+Learned Mean x: tensor(1.0104, device='cuda:0', grad_fn=<MeanBackward0>)
+True Var x: tensor(0.2797, device='cuda:0', grad_fn=<VarBackward0>)
+Learned Var x: tensor(0.3361, device='cuda:0', grad_fn=<VarBackward0>)
+Jacobian term Training Loss: tensor(0.0006)
+Jacobian term Test Loss: tensor(0.0003)
+Learned LE: [[0.3322004]]
+True LE: [[0.3470552]]
+Norm Diff:: tensor(0.0149)

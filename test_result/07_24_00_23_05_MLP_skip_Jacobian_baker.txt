@@ -1,0 +1,62 @@
+time_step: 1.0
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 5000
+num_train: 1000
+num_test: 1000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: baker
+model_type: MLP_skip
+s: 0.0
+n_hidden: 256
+n_layers: 256
+reg_param: 500
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 24.068737030 Test: 21.259523392
+Epoch 0: New minimal relative error: 21.26%, model saved.
+Epoch: 50 Train: 3.748245955 Test: 3.748251438
+Epoch 50: New minimal relative error: 3.75%, model saved.
+Epoch: 100 Train: 3.502629757 Test: 3.514543772
+Epoch 100: New minimal relative error: 3.51%, model saved.
+Epoch: 150 Train: 3.480844975 Test: 3.492757320
+Epoch 150: New minimal relative error: 3.49%, model saved.
+Epoch: 200 Train: 3.458747864 Test: 3.470036983
+Epoch 200: New minimal relative error: 3.47%, model saved.
+Epoch: 250 Train: 3.458110571 Test: 3.467626333
+Epoch 250: New minimal relative error: 3.47%, model saved.
+Epoch: 300 Train: 3.457571983 Test: 3.466589928
+Epoch 300: New minimal relative error: 3.47%, model saved.
+Epoch: 350 Train: 3.461905479 Test: 3.466911793
+Epoch: 400 Train: 3.468366146 Test: 3.473700285
+Epoch: 450 Train: 3.475032091 Test: 3.481690645
+Epoch: 500 Train: 3.469306469 Test: 3.480415344
+Epoch: 550 Train: 3.467429638 Test: 3.473875523
+Epoch: 600 Train: 3.463501215 Test: 3.471060276
+Epoch: 650 Train: 3.467153311 Test: 3.473678350
+Epoch: 700 Train: 3.468207836 Test: 3.471077442
+Epoch: 750 Train: 3.464514732 Test: 3.473901272
+Epoch: 800 Train: 3.463469982 Test: 3.473832607
+Epoch: 850 Train: 3.458998203 Test: 3.471487045
+Epoch: 900 Train: 3.458191156 Test: 3.468443394
+Epoch: 950 Train: 3.457395077 Test: 3.465476751
+Epoch 950: New minimal relative error: 3.47%, model saved.
+Epoch: 1000 Train: 3.459717989 Test: 3.469973087
+Epoch: 1050 Train: 3.464010715 Test: 3.479974747
+Epoch: 1100 Train: 3.468006611 Test: 3.481644630
+Epoch: 1150 Train: 3.471270800 Test: 3.481755733
+Epoch: 1200 Train: 3.473111629 Test: 3.483819008
+Epoch: 1250 Train: 3.476923466 Test: 3.487697363
+Epoch: 1300 Train: 3.480571747 Test: 3.492298365
+Epoch: 1350 Train: 3.470247030 Test: 3.481579781
+Epoch: 1400 Train: 3.468291759 Test: 3.480776310
+Epoch: 1450 Train: 3.470726490 Test: 3.484766722
+Epoch: 1500 Train: 3.472322941 Test: 3.490592241
+Epoch: 1550 Train: 3.473918438 Test: 3.492567778
+Epoch: 1600 Train: 3.473281145 Test: 3.489942551
+Epoch: 1650 Train: 3.472553253 Test: 3.493718863
+Epoch: 1700 Train: 3.477240801 Test: 3.496555805
+Epoch: 1750 Train: 3.480097771 Test: 3.499731779
+Epoch: 1800 Train: 3.484990120 Test: 3.503612518

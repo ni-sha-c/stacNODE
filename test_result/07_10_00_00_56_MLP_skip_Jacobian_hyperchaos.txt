@@ -1,0 +1,35 @@
+time_step: 0.001
+lr: 0.001
+weight_decay: 0.0005
+num_epoch: 30000
+num_train: 10000
+num_test: 8000
+num_val: 3000
+num_trans: 0
+loss_type: Jacobian
+dyn_sys: hyperchaos
+model_type: MLP_skip
+s: 0.2
+n_hidden: 512
+n_layers: 5
+reg_param: 500
+threshold: 0.0
+optim_name: AdamW
+Epoch: 0 Train: 48.943969727 Test: 46.431674957
+Epoch 0: New minimal relative error: 100.04%, model saved.
+Epoch: 300 Train: 9.716377258 Test: 9.394193649
+Epoch 300: New minimal relative error: 49.61%, model saved.
+Epoch: 600 Train: 10.510762215 Test: 10.199069977
+Epoch: 900 Train: 10.872070312 Test: 10.586317062
+Epoch 900: New minimal relative error: 45.48%, model saved.
+Epoch: 1200 Train: 11.358488083 Test: 10.985982895
+Epoch: 1500 Train: 11.230939865 Test: 10.932511330
+Epoch 1500: New minimal relative error: 41.04%, model saved.
+Epoch: 1800 Train: 12.126568794 Test: 11.227156639
+Epoch: 2100 Train: 11.224291801 Test: 10.881536484
+Epoch: 2400 Train: 11.260648727 Test: 10.930324554
+Epoch: 2700 Train: 11.137604713 Test: 10.793184280
+Epoch: 3000 Train: 11.285369873 Test: 10.984756470
+Epoch: 3300 Train: 11.260706902 Test: 10.931260109
+Epoch: 3600 Train: 11.190318108 Test: 10.767996788
+Epoch: 3900 Train: 11.137544632 Test: 10.852907181
