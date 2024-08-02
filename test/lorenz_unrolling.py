@@ -13,7 +13,7 @@ import math
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
 
-
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 ########################
 ### Dynamical System ###
 ########################
@@ -90,14 +90,14 @@ def create_data(dyn_info, n_train, n_test, n_val, n_trans, k):
     dyn, dim, time_step = dyn_info
     tot_time = n_train + n_test + n_val + n_trans
     t_eval_point = torch.arange(0, tot_time, time_step)
-    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='rk4', rtol=1e-8)
+    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='dopri5', rtol=1e-8)
     traj = traj[n_trans:]  # Discard transient part
     def create_sequences(traj, n_samples, k):
         X = []
         Y = []
         for i in range(n_samples - k + 1):
             X.append(traj[i].unsqueeze(0))  # initial condition
-            Y.append(traj[i:i+k].unsqueeze(0))  # ground truth sequence
+            Y.append(traj[i+1:i+k+1].unsqueeze(0))  # ground truth sequence
         # print("X: ", torch.cat(X).shape, "Y: ", torch.cat(Y).shape)
         return torch.cat(X), torch.cat(Y)
 
@@ -111,7 +111,7 @@ def create_data(dyn_info, n_train, n_test, n_val, n_trans, k):
 def calculate_relative_error(model, dyn, device):
     # Simulate an orbit using the true dynamics
     time_step = 0.01  # Example timestep, adjust as needed
-    orbit = torchdiffeq.odeint(dyn, torch.randn(3), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8).to(device)
+    orbit = torchdiffeq.odeint(dyn, torch.randn(3), torch.arange(0, 5, time_step), method='dopri5', rtol=1e-8).to(device)
     
     # Compute vector field from model and true dynamics
     vf_nn = model(0, orbit).detach()
@@ -141,8 +141,8 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     num_train = X_train.shape[0]
     dyn_sys, dim, time_step = dyn_sys_info
     dyn_sys_type = "lorenz" if dyn_sys == lorenz else "rossler"
-    t_eval_point = torch.linspace(0, time_step*30, 31).to(device)
-    # print('t_eval_point: ', t_eval_point)
+    t_eval_point = torch.linspace(0, time_step*args.num_seq, args.num_seq+1).to(device)
+    print('t_eval_point: ', t_eval_point)
     torch.cuda.empty_cache()
     
     # Compute True Jacobian
@@ -158,13 +158,17 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
     min_relative_error = 1000000
     for i in range(epochs):
         model.train()
-        y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, method="rk4")[1:]#[-1]
+        # yfull = torchdiffeq.odeint(model, X_train, t_eval_point, method='dopri5')
+
+        y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, rtol=1e-9, atol=1e-9, method='dopri5')[1:]#[-1]
+        # print('yfull: ', yfull.shape, 'y_pred: ', y_pred.shape)
         y_pred = y_pred.to(device)
         y_pred = y_pred.transpose(0, 1)
         optimizer.zero_grad()
         # print("Y_pred: ", y_pred.shape, "Y_train: ", Y_train.shape, "X_train: ", X_train.shape)
-        train_loss = criterion(y_pred, Y_train)  #* (1/time_step/time_step)
-        print("Train Loss: ", train_loss)
+        train_loss = criterion(y_pred, Y_train) #* (1/time_step/time_step)
+        # train_loss = torch.mean(((y_pred - Y_train) ** 2).mean(dim=2).sqrt())
+        # print("Train Loss: ", train_loss)
 
         if loss_type == "Jacobian":
             # Compute Jacobian
@@ -180,9 +184,10 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
 
         # Save Training and Test History
         if i % (epochs//n_store) == 0 or (i == epochs-1):
+            # print("Epoch: ", i)
             with torch.no_grad():
                 model.eval()
-
+                # print('evaluating...')
 
                 current_relative_error = calculate_relative_error(model, dyn_sys_info[0], device)
                 # Check if current model has the lowest relative error so far
@@ -191,16 +196,18 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     # Save the model
                     torch.save(model.state_dict(), f"{args.train_dir}/best_model.pth")
                     logger.info(f"Epoch {i}: New minimal relative error: {min_relative_error:.2f}%, model saved.")
-                y_pred_val = torchdiffeq.odeint(model, X_val, t_eval_point, method="rk4")[1:]#[-1]
+                y_pred_val = torchdiffeq.odeint(model, X_val, t_eval_point, rtol=1e-9, atol=1e-9, method='dopri5')[1:]#[-1]
                 y_pred_val = y_pred_val.transpose(0, 1)
-                val_loss = criterion(y_pred_val, Y_val) * (1 / time_step / time_step)
-                y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method="rk4")[1:]#[-1]
+                # val_loss = torch.mean(((y_pred_val - Y_val) ** 2).mean(dim=2).sqrt())
+                val_loss = criterion(y_pred_val, Y_val) #* (1 / time_step / time_step)
+                y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method='dopri5')[1:]#[-1]
                 y_pred_test = y_pred_test.to(device)
                 y_pred_test = y_pred_test.transpose(0, 1)
-                # save predicted node feature for analysis            
+                # save predicted node feature for analysis     
+                # test_loss = torch.mean(((y_pred_test - Y_test) ** 2).mean(dim=2).sqrt()  )     
                 test_loss = criterion(y_pred_test, Y_test) #* (1/time_step/time_step)
-                logger.info("Epoch: %d Train: %.5f Test: %.5f", i, train_loss.item(), test_loss.item())
-                # print("Epoch: ", i, " Train: {:.5f}".format(train_loss.item()), " Test: {:.5f}".format(test_loss.item()))
+                logger.info("Epoch: %d Train: %.5f Test: %.5f Val: %.5f", i, train_loss.item(), test_loss.item(), val_loss.item())
+
                 ep_num[k], loss_hist[k], test_loss_hist[k] = i, train_loss.item(), test_loss.item()
 
                 if loss_type == "Jacobian":
@@ -250,10 +257,10 @@ def plot_loss(epochs, train, test, path):
 def plot_attractor(model, dyn_info, time, path):
     # generate true orbit and learned orbit
     dyn, dim, time_step = dyn_info
-    tran_orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
-    true_o = torchdiffeq.odeint(dyn, tran_orbit[-1], torch.arange(0, time, time_step), method='rk4', rtol=1e-8)
-    learned_o = torchdiffeq.odeint(model.eval().to(device), tran_orbit[-1].to(device), torch.arange(0, time, time_step), method="rk4", rtol=1e-8).detach().cpu().numpy()
-
+    tran_orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='dopri5', rtol=1e-8)
+    true_o = torchdiffeq.odeint(dyn, tran_orbit[-1], torch.arange(0, time, time_step), method='dopri5', rtol=1e-8)
+    learned_o = torchdiffeq.odeint(model.eval().to(device), tran_orbit[-1].to(device), torch.arange(0, time, time_step), method='dopri5', rtol=1e-8).detach().cpu().numpy()
+    print("True Orbit: ", true_o.shape, "Learned Orbit: ", learned_o.shape, 'tran_orbit: ', tran_orbit.shape)
     # create plot of attractor with initial point starting from 
     fig, axs = subplots(2, 3, figsize=(24,12))
     cmap = cm.plasma
@@ -289,8 +296,8 @@ def plot_vf_err(model, dyn_info, model_type, loss_type):
     dyn, dim, time_step = dyn_info
     dyn_sys_type = "lorenz" if dyn == lorenz else "rossler"
 
-    orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='rk4', rtol=1e-8)
-    orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 20, time_step), method='rk4', rtol=1e-8)
+    orbit = torchdiffeq.odeint(dyn, torch.randn(dim), torch.arange(0, 5, time_step), method='dopri5', rtol=1e-8)
+    orbit = torchdiffeq.odeint(dyn, orbit[-1], torch.arange(0, 20, time_step), method='dopri5', rtol=1e-8)
     len_o = orbit.shape[0]
 
     vf_nn = model(0, orbit.to('cuda')).detach().cpu()
@@ -435,19 +442,19 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--num_epoch", type=int, default=10000)
-    parser.add_argument("--num_train", type=int, default=1000)
-    parser.add_argument("--num_test", type=int, default=300)
-    parser.add_argument("--num_val", type=int, default=300)
+    parser.add_argument("--num_train", type=int, default=10000)
+    parser.add_argument("--num_test", type=int, default=3000)
+    parser.add_argument("--num_val", type=int, default=3000)
     parser.add_argument("--num_trans", type=int, default=0)
-    parser.add_argument("--num_seq", type=int, default=30)
+    parser.add_argument("--num_seq", type=int, default=10)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
     parser.add_argument("--dyn_sys", default="lorenz", choices=["lorenz", "rossler"])
-    parser.add_argument("--model_type", default="MLP_skip", choices=["MLP","MLP_skip", "GRU"])
+    parser.add_argument("--model_type", default="MLP", choices=["MLP","MLP_skip", "GRU"])
     parser.add_argument("--n_hidden", type=int, default=256)
     parser.add_argument("--n_layers", type=int, default=3)
     parser.add_argument("--reg_param", type=float, default=500)
     parser.add_argument("--optim_name", default="AdamW", choices=["AdamW", "Adam", "RMSprop", "SGD"])
-    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_unroll/")
+    parser.add_argument("--train_dir", default="../plot/Vector_field/train_MLPskip_unroll2/")
 
     # Initialize Settings
     args = parser.parse_args()
@@ -456,7 +463,7 @@ if __name__ == '__main__':
     dim = 3
     dyn_sys_func = lorenz if args.dyn_sys == "lorenz" else rossler
     dyn_sys_info = [dyn_sys_func, dim, args.time_step]
-    criterion = torch.nn.MSELoss()
+    criterion = torch.nn.MSELoss()#reduction='none'
 
     # Save initial settings
     start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
@@ -466,7 +473,7 @@ if __name__ == '__main__':
         os.makedirs(out_dir)
     out_file = os.path.join(out_dir, f"{start_time}_{args.model_type}_{args.loss_type}_{args.dyn_sys}.txt")
     logging.basicConfig(filename=out_file, level=logging.INFO, format="%(message)s")
-    logger = logging.getLogger()
+    logger = logging.getLogger() #.setLevel(logging.INFO)
     for arg, value in vars(args).items():
         logger.info("%s: %s", arg, value)
 
@@ -492,9 +499,9 @@ if __name__ == '__main__':
     mse_loss_path = f"../plot/Loss/{args.dyn_sys}/{args.model_type}_{args.loss_type}_MSE_part_{start_time}.png"
     true_plot_path_1 = f"../plot/Vector_field/True_{args.dyn_sys}_1.png"
     true_plot_path_2 = f"../plot/Vector_field/True_{args.dyn_sys}_2.png"
-    phase_path = f"../plot/Phase_plot/{args.dyn_sys}_{args.model_type}_{args.loss_type}.png"
+    phase_path = f"../plot/Phase_plot/unrolling{args.dyn_sys}_{args.model_type}_{args.loss_type}.png"
 
-    model_path = "../plot/Vector_field/train_MLPskip_unroll/best_model0.pth"
+    model_path = "/home/yding37/Documents/stacNODE/plot/Vector_field/train_MLPskip_unroll/best_model0.pth"
     if not os.path.exists(model_path):
         print("Training the model...")
         epochs, loss_hist, test_loss_hist, jac_train_hist, jac_test_hist, Y_test = train(dyn_sys_info, m, device, dataset, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.reg_param, args.loss_type, args.model_type)
@@ -520,7 +527,7 @@ if __name__ == '__main__':
     plot_attractor(m, dyn_sys_info, 50, phase_path)
 
     # compute LE
-    true_traj = torchdiffeq.odeint(dyn_sys_func, torch.randn(dim), torch.arange(0, 300, args.time_step), method='rk4', rtol=1e-8)
+    true_traj = torchdiffeq.odeint(dyn_sys_func, torch.randn(dim), torch.arange(0, 300, args.time_step), method='dopri5', rtol=1e-8)
     print("Computing LEs of NN...")
     learned_LE = lyap_exps([m, dim, args.time_step], true_traj, 30000).detach().cpu().numpy()
     print("Computing true LEs...")
