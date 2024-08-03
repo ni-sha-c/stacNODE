@@ -445,7 +445,7 @@ if __name__ == '__main__':
 
     # grid search on k, N, layer
     modelchoices = ['MLP_skip']
-    k_list = [10]
+    k_list = [50]
     train_data_list = [10000]
     combinations = list(itertools.product(modelchoices, k_list, train_data_list))
 

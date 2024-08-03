@@ -28,9 +28,9 @@ time_step= 0.01
 ind_func = 0
 s = 0.2
 hidden = 256
-model = 'MLP_skip'
+model = 'MLP'
 num_trajectories = 5000
-long_len_T = 50*int(1/time_step)
+long_len_T = 500*int(1/time_step)
 init = "outside"
 multi_step = True
 
@@ -51,10 +51,11 @@ elif model == "FNO":
     MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
 else:
-    MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
+    # MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
+    MSE_path = "../plot/Vector_field/unroll2_60_MLP/best_model.pth"
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
-    mse_model = ODE_MLP(y_dim=dim, n_hidden=512, n_layers=7).to(device)
-    best_model = ODE_MLP(y_dim=dim, n_hidden=512, n_layers=7).to(device)
+    mse_model = ODE_MLP(y_dim=dim, n_hidden=256, n_layers=3).to(device)
+    best_model = ODE_MLP(y_dim=dim, n_hidden=512, n_layers=3).to(device)
 
 mse_model.load_state_dict(torch.load(MSE_path))
 best_model.load_state_dict(torch.load(JAC_path))
