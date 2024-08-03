@@ -89,17 +89,22 @@ class ODE_MLP_skip(nn.Module):
 
 def create_data(dyn_info, n_train, n_test, n_val, n_trans, k):
     dyn, dim, time_step = dyn_info
-    tot_time = n_train + n_test + n_val + n_trans
+    tot_time = time_step * (n_train + n_test + n_val + n_trans)
+    print("time", tot_time)
     t_eval_point = torch.arange(0, tot_time, time_step)
-    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='dopri5', rtol=1e-8)
+    print("teval", t_eval_point.shape)
+    traj = torchdiffeq.odeint(dyn, torch.randn(dim), t_eval_point, method='rk4', rtol=1e-8)
     traj = traj[n_trans:]  # Discard transient part
     def create_sequences(traj, n_samples, k):
         X = []
         Y = []
         for i in range(n_samples - k + 1):
-            X.append(traj[i].unsqueeze(0))  # initial condition
-            Y.append(traj[i+1:i+k+1].unsqueeze(0))  # ground truth sequence
-        # print("X: ", torch.cat(X).shape, "Y: ", torch.cat(Y).shape)
+            if traj[i+1:i+k+1].shape[0] == k:
+                X.append(traj[i].unsqueeze(0))  # initial condition
+                Y.append(traj[i+1:i+k+1].unsqueeze(0))  # ground truth sequence
+                # print(traj[i].unsqueeze(0))
+                # print(traj[i+1:i+k+1].unsqueeze(0))
+                print("X: ", torch.cat(X).shape, "Y: ", torch.cat(Y).shape)
         return torch.cat(X), torch.cat(Y)
 
 
@@ -161,7 +166,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         model.train()
         # yfull = torchdiffeq.odeint(model, X_train, t_eval_point, method='dopri5')
 
-        y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, rtol=1e-9, atol=1e-9, method='dopri5')[1:]#[-1]
+        y_pred = torchdiffeq.odeint(model, X_train, t_eval_point, rtol=1e-9, atol=1e-9, method='rk4')[1:]#[-1]
         # print('yfull: ', yfull.shape, 'y_pred: ', y_pred.shape)
         y_pred = y_pred.to(device)
         y_pred = y_pred.transpose(0, 1)
@@ -197,11 +202,11 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     # Save the model
                     torch.save(model.state_dict(), f"{args.train_dir}/best_model.pth")
                     logger.info(f"Epoch {i}: New minimal relative error: {min_relative_error:.2f}%, model saved.")
-                y_pred_val = torchdiffeq.odeint(model, X_val, t_eval_point, rtol=1e-9, atol=1e-9, method='dopri5')[1:]#[-1]
+                y_pred_val = torchdiffeq.odeint(model, X_val, t_eval_point, rtol=1e-9, atol=1e-9, method='rk4')[1:]#[-1]
                 y_pred_val = y_pred_val.transpose(0, 1)
                 # val_loss = torch.mean(((y_pred_val - Y_val) ** 2).mean(dim=2).sqrt())
                 val_loss = criterion(y_pred_val, Y_val) #* (1 / time_step / time_step)
-                y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method='dopri5')[1:]#[-1]
+                y_pred_test = torchdiffeq.odeint(model, X_test, t_eval_point, rtol=1e-9, atol=1e-9, method='rk4')[1:]#[-1]
                 y_pred_test = y_pred_test.to(device)
                 y_pred_test = y_pred_test.transpose(0, 1)
                 # save predicted node feature for analysis     
@@ -439,9 +444,9 @@ if __name__ == '__main__':
     print("device: ", device)
 
     # grid search on k, N, layer
-    modelchoices = ['MLP', 'MLP_skip']
-    k_list = [10, 20, 30, 40]
-    train_data_list = [10000, 15000]
+    modelchoices = ['MLP_skip']
+    k_list = [10]
+    train_data_list = [10000]
     combinations = list(itertools.product(modelchoices, k_list, train_data_list))
 
     parser = argparse.ArgumentParser()
@@ -451,7 +456,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_epoch", type=int, default=10000)
     parser.add_argument("--num_train", type=int, default=10000)
     parser.add_argument("--num_test", type=int, default=3000)
-    parser.add_argument("--num_val", type=int, default=3000)
+    parser.add_argument("--num_val", type=int, default=1000)
     parser.add_argument("--num_trans", type=int, default=0)
     parser.add_argument("--num_seq", type=int, default=10)
     parser.add_argument("--loss_type", default="MSE", choices=["Jacobian", "MSE"])
@@ -497,15 +502,15 @@ if __name__ == '__main__':
     # Create Dataset
     data_path = f"/data/{args.num_seq}_{args.num_train}.csv"
     # if not os.path.exists(data_path):
+    print("createdata")
     dataset = create_data(dyn_sys_info, n_train=args.num_train, n_test=args.num_test, n_trans=args.num_trans, n_val=args.num_val, k = args.num_seq)
+    print(dataset[0].shape)
 
     # Create model
     if args.model_type == "MLP":
         m = ODE_MLP(y_dim=dim, n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
     elif args.model_type == "MLP_skip":
         m = ODE_MLP_skip(y_dim=dim, n_hidden=args.n_hidden).to(device)
-    elif args.model_type == "GRU":
-        m = ODE_GRU(n_hidden=args.n_hidden, n_layers=args.n_layers).to(device)
 
     
     # print("Training...") # Train the model, return node

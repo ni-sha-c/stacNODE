@@ -1,0 +1,31 @@
+time_step: 0.01
+lr: 0.001
+weight_decay: 1e-05
+num_epoch: 10000
+num_train: 10000
+num_test: 3000
+num_val: 1000
+num_trans: 0
+num_seq: 10
+loss_type: MSE
+dyn_sys: lorenz
+model_type: MLP_skip
+n_hidden: 256
+n_layers: 3
+reg_param: 500
+optim_name: AdamW
+train_dir: ../plot/Vector_field/train_MLPskip_unroll2/
+Epoch 0: New minimal relative error: 99.46%, model saved.
+Epoch: 0 Train: 13.55599 Test: 12.77494 Val: 14.77953
+Epoch: 100 Train: 0.95381 Test: 2.04392 Val: 1.48182
+Epoch 200: New minimal relative error: 62.97%, model saved.
+Epoch: 200 Train: 0.17993 Test: 0.38463 Val: 0.22895
+Epoch 300: New minimal relative error: 29.28%, model saved.
+Epoch: 300 Train: 0.18596 Test: 0.30823 Val: 0.28862
+Epoch: 400 Train: 0.06209 Test: 0.14652 Val: 0.07681
+Epoch: 500 Train: 0.14418 Test: 0.21342 Val: 0.16474
+Epoch 600: New minimal relative error: 17.56%, model saved.
+Epoch: 600 Train: 0.09138 Test: 0.15851 Val: 0.10981
+Epoch: 700 Train: 0.05563 Test: 0.09864 Val: 0.05205
+Epoch 800: New minimal relative error: 12.42%, model saved.
+Epoch: 800 Train: 0.03449 Test: 0.07068 Val: 0.03056
