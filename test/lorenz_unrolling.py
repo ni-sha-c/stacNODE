@@ -10,10 +10,11 @@ import json
 import logging
 import os
 import math
+import itertools
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import axes3d
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 ########################
 ### Dynamical System ###
 ########################
@@ -437,6 +438,12 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("device: ", device)
 
+    # grid search on k, N, layer
+    modelchoices = ['MLP', 'MLP_skip']
+    k_list = [10, 20, 30, 40]
+    train_data_list = [10000, 15000]
+    combinations = list(itertools.product(modelchoices, k_list, train_data_list))
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", type=float, default=1e-2)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -465,6 +472,15 @@ if __name__ == '__main__':
     dyn_sys_info = [dyn_sys_func, dim, args.time_step]
     criterion = torch.nn.MSELoss()#reduction='none'
 
+    # grid search
+    # logging.basicConfig(level=logging.INFO, format="%(message)s")
+    for index, combination in enumerate(combinations):
+        args.model_type = combination[0]
+        args.num_seq = combination[1]
+        args.num_train = combination[2]
+
+    print(index, combination)
+
     # Save initial settings
     start_time = datetime.datetime.now().strftime("%m_%d_%H_%M_%S")
 
@@ -472,12 +488,15 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     out_file = os.path.join(out_dir, f"{start_time}_{args.model_type}_{args.loss_type}_{args.dyn_sys}.txt")
-    logging.basicConfig(filename=out_file, level=logging.INFO, format="%(message)s")
-    logger = logging.getLogger() #.setLevel(logging.INFO)
+    print("file: ", f"{start_time}_{args.model_type}_{args.loss_type}_{args.dyn_sys}.txt")
+    logging.basicConfig(filename=out_file, filemode="w", level=logging.INFO, format="%(message)s")
+    logger = logging.getLogger(__name__)
     for arg, value in vars(args).items():
         logger.info("%s: %s", arg, value)
 
     # Create Dataset
+    data_path = f"/data/{args.num_seq}_{args.num_train}.csv"
+    # if not os.path.exists(data_path):
     dataset = create_data(dyn_sys_info, n_train=args.num_train, n_test=args.num_test, n_trans=args.num_trans, n_val=args.num_val, k = args.num_seq)
 
     # Create model
@@ -521,9 +540,6 @@ if __name__ == '__main__':
 
     # Plot vector field & phase space
     percentage_err = plot_vf_err(m, dyn_sys_info, args.model_type, args.loss_type)
-    # plot_vf_err_test(m, Y_test, dyn_sys_info, args.model_type, args.loss_type)
-    # plot_vector_field(dyn_sys_func, path=true_plot_path_1, idx=1, t=0., N=100, device='cuda')
-    # plot_vector_field(dyn_sys_func, path=true_plot_path_2, idx=2, t=0., N=100, device='cuda')
     plot_attractor(m, dyn_sys_info, 50, phase_path)
 
     # compute LE
@@ -534,10 +550,6 @@ if __name__ == '__main__':
     True_LE = lyap_exps(dyn_sys_info, true_traj, 30000).detach().cpu().numpy()
     # # loss_hist, test_loss_hist, jac_train_hist, jac_test_hist
 
-    # logger.info("%s: %s", "Training Loss", str(loss_hist[-1]))
-    # logger.info("%s: %s", "Test Loss", str(test_loss_hist[-1]))
-    # logger.info("%s: %s", "Jacobian term Training Loss", str(jac_train_hist[-1]))
-    # logger.info("%s: %s", "Jacobian term Test Loss", str(jac_test_hist[-1]))
     logger.info("%s: %s", "Learned LE", str(learned_LE))
     logger.info("%s: %s", "True LE", str(True_LE))
     logger.info("%s: %s", "Relative Error", str(percentage_err))
