@@ -31,17 +31,17 @@ ind_func = 0
 s = 0.2
 hidden = 256
 model = 'MLP_skip'
-num_trajectories = 5000
+num_trajectories = 10000
 # long_len_T = 100*int(1/time_step)
-short_len_T = 200*int(1/time_step)
+short_len_T = 400*int(1/time_step)
 
 torch.manual_seed(42)
 
 if model == "MLP_skip":
-    MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model_MLPskip_MSE.pth"
-    JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model_MLPskip_JAC.pth"
-    mse_model = ODE_MLP_skip(y_dim=dim, n_hidden=512, n_layers=5).to(device)
-    best_model = ODE_MLP_skip(y_dim=dim, n_hidden=256, n_layers=5).to(device)
+    MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
+    JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
+    mse_model = ODE_MLP_skip(y_dim=dim, n_hidden=512, n_layers=3).to(device)
+    best_model = ODE_MLP_skip(y_dim=dim, n_hidden=256, n_layers=4).to(device)
 else:
     MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
@@ -96,9 +96,9 @@ for i in range(num_trajectories):
     mse_LE.append(lyap_exps([dyn_sys, mse_model, dim, time_step], s, torch.tensor(mse_short[i]), short_len_T).detach().cpu().numpy())
 
 
-JAC_file = "JAC_LE_200_2.csv"
-MSE_file = "MSE_LE_200_2.csv"
-TRUE_file = "TRUE_LE_200_2.csv"
+JAC_file = "JAC_LE_500_2.csv"
+MSE_file = "MSE_LE_500_2.csv"
+TRUE_file = "TRUE_LE_500_2.csv"
 
 # Open the CSV file in write mode
 with open(JAC_file, 'w', newline='') as csvfile:

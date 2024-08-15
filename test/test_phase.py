@@ -38,7 +38,7 @@ if init == "inside":
 else:
     true_initial_condition = torch.tensor([-15., -15., 5.]).reshape(1, dim)
     pdf_path = '../plot/phase_outside_all_'+str(model)+'.jpg'
-    pdf_path_2 = '../plot/phase_outside_all_res.jpg'
+    # pdf_path_2 = '../plot/phase_outside_all_res.jpg'
 
 model='MLP_skip'
 MSE_MS_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
@@ -183,4 +183,4 @@ cax = divider.append_axes("right", size="5%", pad=0.2)
 cbar = fig.colorbar(scatter, cax=cax)
 cbar.ax.tick_params(labelsize=45)  # Set colorbar tick label size
 
-fig.savefig(pdf_path_2, format='png', dpi=400, bbox_inches='tight', pad_inches=0.1)
+fig.savefig(pdf_path, format='png', dpi=400, bbox_inches='tight', pad_inches=0.1)

@@ -31,7 +31,7 @@ hidden = 256
 model = 'MLP'
 num_trajectories = 5000
 long_len_T = 500*int(1/time_step)
-init = "outside"
+init = "inside"
 multi_step = True
 
 if init == "inside":
@@ -52,9 +52,11 @@ elif model == "FNO":
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
 else:
     # MSE_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_MSE_fullbatch/best_model.pth"
-    MSE_path = "../plot/Vector_field/unroll2_60_MLP/best_model.pth"
+    MSE_path = "../plot/Vector_field/unroll2_50_Res/best_model.pth"
     JAC_path = "../plot/Vector_field/"+str(dyn_sys)+"/"+str(model)+"_Jacobian_fullbatch/best_model.pth"
-    mse_model = ODE_MLP(y_dim=dim, n_hidden=256, n_layers=3).to(device)
+    # mse_model = ODE_MLP(y_dim=dim, n_hidden=256, n_layers=3).to(device)
+    print(torch.load(MSE_path).keys())
+    mse_model = ODE_MLP_skip(y_dim=dim, n_hidden=256, n_layers=5).to(device)
     best_model = ODE_MLP(y_dim=dim, n_hidden=512, n_layers=3).to(device)
 
 mse_model.load_state_dict(torch.load(MSE_path))
@@ -221,6 +223,7 @@ learned_LE = lyap_exps(["lorenz", best_model, dim, 0.01], 0, learned_long, learn
 mse_learned_LE = lyap_exps(["lorenz", mse_model, dim, 0.01], 0, mse_long, mse_long.shape[0]).detach().cpu().numpy()
 print("Computing true LEs...")
 True_LE = lyap_exps(["lorenz", dyn, dim, 0.01], 0, true_long, true_long.shape[0]).detach().cpu().numpy()
+print("Learned LE (mse): ", mse_learned_LE)
 print("JAC Norm Difference: ", np.linalg.norm(learned_LE - True_LE))
 print("MSE Norm Difference: ", np.linalg.norm(mse_learned_LE - True_LE))
 
