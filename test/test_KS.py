@@ -495,14 +495,6 @@ def lyap_exps_ks(dyn_sys, dyn_sys_info, true_traj, iters, u_list, dx, L, c, T, d
 
         LE = [sum([lyap_exp[i][j] for i in range(iters)]) / (real_time) for j in range(dim)]
 
-    # plot
-    # fig, ax = subplots(figsize=(12,6))
-    # ax.plot(np.asarray(lyap_exp)[:, 1], color="lime", marker='o', alpha=0.8)
-    # ax.xaxis.set_tick_params(labelsize=36)
-    # ax.yaxis.set_tick_params(labelsize=36)
-    # path = '../plot/'+'LE_conv'+'.png'
-    # fig.savefig(path, format='png')
-
     return torch.tensor(LE)
 
 if __name__ == '__main__':

@@ -108,25 +108,6 @@ if __name__ == '__main__':
         JAC_avg_traj = JAC_traj[:, valid_idx, ind_func].detach().cpu().numpy()
     print("shape", MSE_avg_traj.shape, JAC_avg_traj.shape)
 
-    # r_val = max_distance_between_points(true_avg_traj)
-    # print("function r", 0.2*np.std(true_avg_traj))
-
-    # list_tau=np.arange(1,10,1)
-    # print("l", list_tau)
-    # l = len(true_avg_traj)
-    # tau_arr = []
-
-
-    # for t in range(0,len(list_tau)):
-    #     mi = mutual_info_regression(true_avg_traj[:l-int(list_tau[t])], true_avg_traj[int(list_tau[t]):].flatten())
-    #     tau_arr.append(mi)
-    #     print(t, mi)
-
-    # tau_arr = np.array(tau_arr)
-    # arr_wo_zeros = np.where(tau_arr == 0, np.inf, tau_arr)
-    # min_non_zero = np.argmin(arr_wo_zeros)
-    # print("min tau=", min_non_zero)
-
     true_entropy, true_ci = eh.K2En(true_avg_traj, m=1) #tau=8, Logx=np.exp(2), r=1e-5 r=1.2 , r=r_val.astype(float) , tau=int(min_non_zero+1)
     MSE_entropy, MSE_ci = eh.K2En(MSE_avg_traj, m=1)
     JAC_entropy, JAC_ci = eh.K2En(JAC_avg_traj, m=1)

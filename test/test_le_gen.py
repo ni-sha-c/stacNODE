@@ -112,33 +112,3 @@ with open(MSE_file, 'w', newline='') as csvfile:
 with open(TRUE_file, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile)
     csvwriter.writerows(true_LE)
-
-# with open("RE_KS.csv", 'w', newline='') as csvfile:
-#     csvwriter = csv.writer(csvfile)
-#     csvwriter.writerows(RE_LE)
-
-# # Function to plot histograms for three models in one subplot
-# def plot_histograms(ax, data_true, data_learned, data_mse, title):
-#     bins = np.linspace(min(np.min(data_true), np.min(data_learned), np.min(data_mse)), max(np.max(data_true), np.max(data_learned), np.max(data_mse)), 800)
-
-#     ax.hist(data_mse, bins=bins, alpha=0.7, label='MSE Model', color='turquoise', histtype='step', linewidth=2., density=True)
-#     ax.hist(data_learned, bins=bins, alpha=0.7, label='JAC Model', color='slateblue', histtype='step', linewidth=2., density=True)
-#     ax.hist(data_true, bins=bins, alpha=0.7, label='True Model', color='salmon', histtype='step', linewidth=2., density=True)
-
-#     ax.set_title(title)
-#     ax.legend()
-
-# fig, axes = plt.subplots(2, 3, figsize=(15, 10))  # 2 rows (time, ensemble) x 3 columns (x, y, z)
-# dimensions = ['X Dimension', 'Y Dimension', 'Z Dimension']
-# true_long = np.squeeze(true_long)
-# learned_long = np.squeeze(learned_long)
-# mse_long = np.squeeze(mse_long)
-
-# for j in range(3): 
-#     plot_histograms(axes[0, j], true_long[:, j], learned_long[:, j],mse_long[:, j], f'Time Avg - {dimensions[j]}')
-#     plot_histograms(axes[1, j], true_short[:, :, j].flatten(), learned_short[:, :, j].flatten(), mse_short[:, :, j].flatten(), f'Ensemble Avg - {dimensions[j]}')
-
-# plt.tight_layout()
-# pdf_path = '../plot/dist_'+str(model)+'.jpg'
-# plt.savefig(pdf_path, format='jpg', dpi=400, bbox_inches ='tight', pad_inches = 0.1)
-# # plt.show()

@@ -121,7 +121,8 @@ def calculate_relative_error(model, dyn, dim, device, time_step):
     return relative_error
 
 def update_lr(optimizer, epoch, total_e, origin_lr):
-    """ A decay factor of 0.1 raised to the power of epoch / total_epochs. Learning rate decreases gradually as the epoch number increases towards the total number of epochs. """
+    """ A decay factor of 0.1 raised to the power of epoch / total_epochs. 
+    Learning rate decreases gradually as the epoch number increases towards the total number of epochs. """
     new_lr = origin_lr * (0.1 ** (epoch / float(total_e)))
     for params in optimizer.param_groups:
         params['lr'] = new_lr
@@ -264,7 +265,7 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
         else: 
             y_pred = torchdiffeq.odeint(model, X_train.float(), t_eval_point, method="rk4")[-1].to(device)
         optimizer.zero_grad()
-        train_loss = criterion(y_pred, Y_train) 
+        train_loss = criterion(y_pred, Y_train) * (1/time_step/time_step) 
         # / torch.norm(Y_train) * (1/time_step/time_step)
         if loss_type == "Jacobian":
             with timer:
@@ -277,7 +278,6 @@ def train(dyn_sys_info, model, device, dataset, optim_name, criterion, epochs, l
                     jacrev = torch.func.jacrev(model, argnums=1)
                     compute_batch_jac = torch.vmap(jacrev, in_dims=(None, 0))
                     cur_model_J = compute_batch_jac(0, X_train).to(device)
-            print(True_J[5:7], cur_model_J[5:7])
             jac_norm_diff = criterion(True_J, cur_model_J)/torch.norm(True_J)
             train_loss += reg_param*jac_norm_diff
 

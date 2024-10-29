@@ -157,7 +157,6 @@ if __name__ == '__main__':
 
     ax1.grid(True)
     ax1.legend(['JAC', 'True', 'MSE'], fontsize=30)
-    # ax1.legend(['True', 'MSE'], fontsize=30)
     ax1.xaxis.set_tick_params(labelsize=34)
     ax1.yaxis.set_tick_params(labelsize=34)
     tight_layout()
