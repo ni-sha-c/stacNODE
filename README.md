@@ -5,3 +5,5 @@
 ## Examples
 
 Simple implementation is under test/test_lorenz.py
+
+## References

@@ -159,7 +159,6 @@ def run_KS_timeavg(u, c, dx, dt, T, mean):
     n = u.shape[0]
     t = 0.
     spatial_avg = 0
-    # spatial_avg = torch.zeros(u.shape)
     denominator = 0
     time_avg = 0
     u_list = []
@@ -173,17 +172,8 @@ def run_KS_timeavg(u, c, dx, dt, T, mean):
             if t >= (T - 200 + dt):
                 denominator += 1
                 spatial_avg += torch.mean(u)
-                # spatial_avg += u
-                # print(u)
-                # print(torch.mean(u))
-            # print("At time", t, " Max u", torch.max(u))
-            # print("Min u", torch.min(u))'''
-
-
-    # plot_KS(u_list, dx, n, c, T, dt)
 
     if mean == True:
-        # time_avg = torch.mean(spatial_avg) / denominator
         time_avg = spatial_avg / denominator
     
     if torch.is_tensor(u):

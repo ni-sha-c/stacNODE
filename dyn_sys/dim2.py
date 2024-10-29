@@ -5,28 +5,6 @@ import datetime
 import sys
 import json
 
-# sys.path.append('../test')
-# from test_metrics import *
-
-# csc.ucdavis.edu/~chaos/courses/nlp/Software/PartG_Code/BakersMap.py
-
-
-# def baker(X):
-
-#     a=0.3
-#     x, y = X
-
-#     # Assume (x,y) is on [0,1] x [0,1]
-#     y = a* y
-#     if x > 0.5:
-#         y = y + 0.5
-    
-#     x = 2.0 * x
-#     while x > 1.0:
-#         x = x- 1.0 
-
-    
-#     return torch.stack([x, y])
 
 def baker(X, s3=0.):
 
@@ -126,18 +104,6 @@ if __name__ == '__main__':
             next_x = dyn_sys_func(x_multi_0)
             longer_traj[j] = next_x
             x_multi_0 = next_x
-
-        # elif (str(args.dyn_sys) == "baker"):
-        #     fig, (ax1, ax2) = subplots(1,2, figsize=(24,12))
-        #     ax1.scatter(whole_traj[:args.num_train, 0], whole_traj[:args.num_train, 1], color=(0.25, 0.25, 0.25), s=20, alpha=0.7)
-        #     ax2.scatter(whole_traj[:100, 0], whole_traj[:100, 1], color=(0.25, 0.25, 0.25), s=20, alpha=0.7)
-        #     ax1.xaxis.set_tick_params(labelsize=24)
-        #     ax1.yaxis.set_tick_params(labelsize=24)
-        #     ax2.xaxis.set_tick_params(labelsize=24)
-        #     ax2.yaxis.set_tick_params(labelsize=24)
-
-        #     path = '../plot/baker_phase.jpg'
-        #     fig.savefig(path, format='jpg', dpi=400)
 
     
     print("train", training_traj.shape)

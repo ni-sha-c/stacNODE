@@ -4,8 +4,7 @@ from matplotlib.pyplot import *
 # # Tilted Tentmap, 0.5
 def tilted_tent_map(x, s):
     s = torch.tensor(s, dtype=torch.float64).to('cuda')
-    # x = x.to(torch.float64).to('cuda')
-    # x = torch.tensor(x.clone().detach()).cuda()
+
     if isinstance(x, torch.Tensor):
         x = x.cuda()
     else:
@@ -101,56 +100,3 @@ if __name__ == '__main__':
     ax.legend(loc='best', fontsize=40)
     tight_layout()
     fig.savefig(pdf_path, format='jpg', dpi=400)
-
-
-
-
-
-    # # savefig
-    # fig, ax = subplots(figsize=(24,13))
-    # pdf_path = '../plot/tilted_map_MSE'+'.jpg'
-    # T = 50000
-    # T_min = 500
-    # colors = cm.viridis(np.linspace(0, 1, 6))
-
-    # # create True Plot
-    # s_list = [0., 0.2, 0.4, 0.6, 0.8, 1.0]
-    # print(s_list)
-    # x0 = 0.63
-    # x = torch.linspace(0.01, 1.99, T)
-
-    # for idx, s in enumerate(s_list):
-
-    #     whole_traj = torch.zeros(T)
-    #     # x = x0
-    #     for i in range(T):
-    #         next_x = tent_map(x[i], s)
-    #         whole_traj[i] = next_x
-    #         # x = next_x
-
-    #     # Train model
-    #     dataset = create_data(whole_traj, n_train=10000, n_test=8000, n_nodes=1, n_trans=0)
-    #     m = create_NODE(device, args.dyn_sys, n_nodes=dim, n_hidden=64,T=args.time_step).double()
-    #     # MSE
-    #     pred_train, true_train, pred_test, loss_hist, test_loss_hist, multi_step_error = MSE_train(dyn_sys_info, m, device, dataset, longer_traj, args.optim_name, criterion, args.num_epoch, args.lr, args.weight_decay, args.time_step, real_time, args.num_trans, multi_step=False, minibatch=args.minibatch, batch_size=args.batch_size)
-
-    #     # Plot
-    #     traj = torch.zeros(T_min)
-    #     for i in range(T_min):
-    #         next_x = m(x[i])
-    #         traj[i] = next_x
-
-    #     ax.scatter(x[0:-1], traj[1:], color=colors[idx], linewidth=6, alpha=0.8, label='s = ' + str(s))
-        
-    # # ax.grid(True)
-    # ax.set_xlabel(r"$x_n$", fontsize=44)
-    # ax.set_ylabel(r"$x_{n+1}$", fontsize=44)
-    # ax.tick_params(labelsize=40)
-    # ax.legend(loc='best', fontsize=40)
-    # tight_layout()
-                
-    # fig.savefig(pdf_path, format='jpg', dpi=400)
-
-
-
-
